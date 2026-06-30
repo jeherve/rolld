@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Client } from '@atcute/client';
 import { isUnverifiedHandle, resolveMiniDoc } from '../src/read/identity.js';
+import { getProfiles } from '../src/read/bsky.js';
 import { playsToFeedItems } from '../src/read/friends.js';
 import { gameTargetUrl } from '../src/links.js';
 import type { PlayRecord } from '../src/records/types.js';
@@ -50,5 +52,33 @@ describe('playsToFeedItems (D-26)', () => {
     const [item] = playsToFeedItems('did:plc:me', [rec], true);
     expect(item).toMatchObject({ uri: rec.uri, authorDid: 'did:plc:me', rkey: '3k', isOwn: true });
     expect(item!.play.game.name).toBe('Catan');
+  });
+});
+
+/* ---- batched profile hydration (perf: avoid the N+1 on getProfile) ---- */
+
+// A fake atcute Client whose `get` runs `impl(params)`. `ok()` unwraps `{ ok, data }`.
+const fakeAppview = (impl: (actors: string[]) => unknown): Client =>
+  ({ get: (_nsid: string, opts: { params: { actors: string[] } }) => impl(opts.params.actors) }) as unknown as Client;
+
+describe('getProfiles — batched, chunked, fault-tolerant', () => {
+  it('chunks into groups of 25, dedupes, and merges the results', async () => {
+    const calls: number[] = [];
+    const client = fakeAppview((actors) => {
+      calls.push(actors.length);
+      return { ok: true, data: { profiles: actors.map((did) => ({ did, handle: `${did}.test` })) } };
+    });
+    const dids = Array.from({ length: 30 }, (_v, i) => `did:plc:${i}`);
+    const profiles = await getProfiles(client, [...dids, dids[0]!]); // includes a duplicate
+    expect(calls).toEqual([25, 5]); // ceil(30 unique / 25) = 2 requests, not 30
+    expect(profiles).toHaveLength(30);
+    expect(profiles[0]).toMatchObject({ did: 'did:plc:0', handle: 'did:plc:0.test' });
+  });
+
+  it('degrades a failed chunk to empty rather than throwing the whole batch', async () => {
+    const client = fakeAppview(() => {
+      throw new Error('appview unavailable');
+    });
+    await expect(getProfiles(client, ['did:plc:a', 'did:plc:b'])).resolves.toEqual([]);
   });
 });

@@ -15,7 +15,7 @@ import type { GameRef, PlayRecord, ProfileRecord, RatingRecord } from '../record
 
 /** A play or rating record value seen through the entry-permalink lens (fields from either). */
 type EntryValue = Partial<PlayRecord> & Partial<RatingRecord> & { game: GameRef };
-import { appviewClient, getCommentThread, getProfile, type BskyProfile } from '../read/bsky.js';
+import { appviewClient, getCommentThread, getProfile, getProfiles, type BskyProfile } from '../read/bsky.js';
 import {
   gameDistinctPlayers,
   gamePlays,
@@ -64,17 +64,19 @@ const loadError = (retry?: SafeHtml): SafeHtml =>
 /** Resolve the display identity for a set of DIDs (best-effort, for feed cards). */
 async function loadAuthors(dids: string[]): Promise<Map<string, FeedAuthor>> {
   const out = new Map<string, FeedAuthor>();
-  await Promise.all(
-    [...new Set(dids)].map(async (did) => {
-      const profile = await getProfile(appview, did);
-      out.set(did, {
-        did,
-        handle: profile?.handle ?? did,
-        ...(profile?.displayName ? { displayName: profile.displayName } : {}),
-        ...(profile?.avatar ? { avatar: profile.avatar } : {}),
-      });
-    }),
-  );
+  const unique = [...new Set(dids)];
+  // One batched call per 25 authors (getProfiles) instead of one request per DID.
+  const profiles = await getProfiles(appview, unique);
+  const byDid = new Map(profiles.map((p) => [p.did, p]));
+  for (const did of unique) {
+    const profile = byDid.get(did);
+    out.set(did, {
+      did,
+      handle: profile?.handle ?? did,
+      ...(profile?.displayName ? { displayName: profile.displayName } : {}),
+      ...(profile?.avatar ? { avatar: profile.avatar } : {}),
+    });
+  }
   return out;
 }
 
@@ -153,8 +155,12 @@ export function dashboard(ctx: PageCtx): void {
         );
         return;
       }
-      const authors = await loadAuthors(feed.map((f) => f.authorDid));
-      const metas = await resolveGames(feed.map((f) => f.play.game.id));
+      // Author identities and game metadata are independent fan-outs — run them
+      // together so the dashboard waits on the slower of the two, not their sum.
+      const [authors, metas] = await Promise.all([
+        loadAuthors(feed.map((f) => f.authorDid)),
+        resolveGames(feed.map((f) => f.play.game.id)),
+      ]);
       render(
         feedEl,
         html`${feed.map((item) =>

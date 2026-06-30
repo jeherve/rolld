@@ -75,18 +75,22 @@ async function resolveMany(env: Env, ids: string[]): Promise<GameMetadata[]> {
   const unique = [...new Set(ids.filter(Boolean))];
   const found = new Map<string, GameMetadata>();
   const misses: string[] = [];
-  for (const id of unique) {
-    const cached = await readGameCache(env, id);
-    if (cached) found.set(id, cached);
+  // Cache lookups are independent — read them all at once rather than serializing a
+  // KV round-trip per id (a 30-game feed otherwise pays ~30 sequential reads).
+  const cached = await Promise.all(unique.map((id) => readGameCache(env, id)));
+  unique.forEach((id, i) => {
+    const hit = cached[i];
+    if (hit) found.set(id, hit);
     else misses.push(id);
-  }
+  });
+  // BGG `thing` calls stay sequential (fetch etiquette, D-31); only the KV writes
+  // within a batch are independent, so fire those together.
   for (let i = 0; i < misses.length; i += MAX_BATCH) {
     const batch = misses.slice(i, i + MAX_BATCH);
     const xml = await fetchThingXml(batch.join(','), env.BGG_TOKEN);
-    for (const meta of parseThings(xml, new Date().toISOString())) {
-      await env.BGG_CACHE.put(gameKey(meta.id), JSON.stringify(meta));
-      found.set(meta.id, meta);
-    }
+    const metas = parseThings(xml, new Date().toISOString());
+    await Promise.all(metas.map((meta) => env.BGG_CACHE.put(gameKey(meta.id), JSON.stringify(meta))));
+    for (const meta of metas) found.set(meta.id, meta);
   }
   // Preserve requested order; drop ids BGG didn't return.
   return unique.map((id) => found.get(id)).filter((m): m is GameMetadata => m !== undefined);
