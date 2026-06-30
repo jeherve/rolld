@@ -1,0 +1,52 @@
+{
+  "lexicon": 1,
+  "id": "at.rolld.rating",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "The user's grade for a game. Single overwritable record per game (BGG id in the record key); re-rating replaces it, no history kept in v1. Scale is 1-10 to align with BGG's community average you already hydrate.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["game", "target", "rating", "createdAt"],
+        "properties": {
+          "game": {
+            "type": "ref",
+            "ref": "at.rolld.defs#gameRef"
+          },
+          "target": {
+            "type": "string",
+            "format": "uri",
+            "description": "The canonical per-game URL (https://rolld.at/g/<bggId>) — the SAME frozen target the play record uses. Present so ratings are Constellation-discoverable by game (the community-wide 'what does rolld rate this game' + 'follows' reviews of this game' queries, D-39). Identical format and shared helper as play.target (D-9). FROZEN format. The targeted 'did this specific follow rate it' lookup uses getRecord by rkey (= BGG id) instead; target powers the open-ended who-rated-this queries."
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "Grade from 1 (worst) to 10 (best)."
+          },
+          "content": {
+            "type": "union",
+            "description": "Optional rich review of the game. Same model as at.rolld.play: open union (bring-your-own-content), v1 accepts markpub Markdown, render via $type with textContent as fallback. Replaces the earlier plain 'review' string so play and rating share one note shape.",
+            "refs": ["at.markpub.markdown"]
+          },
+          "textContent": {
+            "type": "string",
+            "description": "Plain-text rendering of `content`, always populated when `content` is present. Universal fallback + search/preview field. No grapheme limit.",
+            "maxLength": 100000
+          },
+          "bskyPostRef": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "Strong ref to a companion app.bsky.feed.post, if the user shared this rating on Bluesky. Links back to the per-entry permalink (/@<handle>/rating/<rkey> — note rating rkey is the BGG id). Enables Bluesky replies as discussion later."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When last rated. Doubles as ratedAt since the record is overwritten in place."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "lexicon": 1,
+  "id": "at.rolld.profile",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A single per-user record (key 'self') that declares 'this account uses rolld'. Its PRESENCE is the signal that an account participates, so the friends-feed can cheaply find which of a user's follows to fetch (query for this record across follows, then read plays only for those who have it). Its DELETION is a clean opt-out. Holds optional lightweight display preferences; the authoritative bio/avatar still come from app.bsky.actor.profile, not here. Modeled on atmot's stats record doing the same double duty.",
+      "key": "literal:self",
+      "record": {
+        "type": "object",
+        "required": ["createdAt"],
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 320,
+            "description": "Optional rolld-specific display name override. If absent, the app uses app.bsky.actor.profile."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the account first declared rolld participation."
+          }
+        }
+      }
+    }
+  }
+}

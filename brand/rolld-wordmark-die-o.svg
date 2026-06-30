@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="240" viewBox="0 0 24 12" shape-rendering="crispEdges">
+  <!-- "r" + die-as-o (single center pip = a dotted o) + "lld";
+       the two l's pick up the two brand colors, matching the horizontal lockup -->
+  <text x="0" y="9.6" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="600" fill="#f4f1e8">r</text>
+  <rect x="6.2" y="3.1" width="6.2" height="6.2" fill="#00000066"/>
+  <rect x="5.5" y="2.4" width="6.2" height="6.2" fill="#E58AA0"/>
+  <rect x="7.9" y="4.8" width="1.4" height="1.4" fill="#232530"/>
+  <text x="12.6" y="9.6" font-family="IBM Plex Mono, monospace" font-size="9" font-weight="600"><tspan fill="#E58AA0">l</tspan><tspan fill="#4FB89A">l</tspan><tspan fill="#f4f1e8">d</tspan></text>
+</svg>

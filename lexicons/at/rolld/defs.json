@@ -1,0 +1,79 @@
+{
+  "lexicon": 1,
+  "id": "at.rolld.defs",
+  "defs": {
+    "gameRef": {
+      "type": "object",
+      "description": "A reference to a game by its BoardGameGeek id, PLUS a minimal denormalized snapshot of the game's name (and optionally year) captured at write time. The BGG id is rolld's permanent identity key (used for aggregation, the canonical URL, the rating rkey). The 'name' snapshot makes the record SELF-DESCRIBING: it stays human-meaningful even if BGG disappears, the hydration Worker is down, or a future AppView has never heard of BGG. The snapshot is 'what the user called the game when they logged it', not authoritative live metadata — current cover/weight/rating are still hydrated at display time via resolveGame(). This is the decentralization safeguard (see DECISIONS D-7, D-32): the id is for aggregation, the name is for durable meaning. Object (not bare string) also leaves room to add optional fields later (e.g. a 'catalog' discriminator) without a breaking change.",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The BGG 'thing' id as a string (e.g. '174430'). The permanent identity key for aggregation.",
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "description": "Denormalized snapshot of the game's primary name at write time. Makes the record self-describing without a hydration round-trip and survives loss of the metadata source. Not treated as authoritative live metadata.",
+          "maxLength": 512
+        },
+        "yearPublished": {
+          "type": "integer",
+          "description": "Optional denormalized publication year snapshot, to disambiguate same-named games in display without hydration."
+        }
+      }
+    },
+    "player": {
+      "type": "object",
+      "description": "A participant in a play. At least one of did or displayName should be present. A did asserts identity but is NOT bidirectionally confirmed by the other party in v1.",
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "The co-player's atproto identity, if known."
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 320,
+          "description": "Name for a player without (or instead of) a DID."
+        },
+        "score": {
+          "type": "integer",
+          "description": "This player's final score, if the game is scored."
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "description": "A photo attached to a play (the board, the table, the scores). The blob lives in the user's own PDS (uploaded once via com.atproto.repo.uploadBlob), embedded here by ref — the same blob ref can also be embedded in a companion app.bsky.feed.post's app.bsky.embed.images without re-uploading. The photo is part of the play, not a standalone record (see DECISIONS D-33).",
+      "required": ["image", "alt"],
+      "properties": {
+        "image": {
+          "type": "blob",
+          "accept": ["image/jpeg", "image/png", "image/webp", "image/gif"],
+          "maxSize": 1000000,
+          "description": "The image blob (≤1MB; resize/compress client-side before upload). Mirrors common atproto image limits."
+        },
+        "alt": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Alt text for accessibility. Required — also what Bluesky expects when the same blob is embedded in a post."
+        },
+        "aspectRatio": {
+          "type": "ref",
+          "ref": "#aspectRatio",
+          "description": "Optional pixel dimensions, so clients can lay out without loading the blob first (matches app.bsky.embed.images' aspectRatio)."
+        }
+      }
+    },
+    "aspectRatio": {
+      "type": "object",
+      "description": "Image dimensions in pixels (1:1 with app.bsky.embed.defs#aspectRatio shape).",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

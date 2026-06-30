@@ -1,0 +1,88 @@
+{
+  "lexicon": 1,
+  "id": "at.rolld.play",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A single logged session of playing a board game. The high-volume event record. Reads ('times played', 'who played this game') are served by querying Constellation for backlinks to the 'target' URL — derived live, never stored.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["game", "target", "playedAt", "createdAt"],
+        "properties": {
+          "game": {
+            "type": "ref",
+            "ref": "at.rolld.defs#gameRef",
+            "description": "The game played, referenced by BGG id."
+          },
+          "target": {
+            "type": "string",
+            "format": "uri",
+            "description": "Canonical per-game web URL (https://rolld.at/g/<bggId>) that Constellation indexes as a backlink target. FROZEN format, emitted from one shared helper shared by write and read paths. This is the linchpin of the serverless read model — backlinks to this URL ARE the play aggregation. No catalog segment: game identity is permanently BGG-keyed."
+          },
+          "playedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the play session occurred (may differ from createdAt if logged later)."
+          },
+          "players": {
+            "type": "array",
+            "description": "Who played. Each entry may carry an atproto DID (for real handles) and/or a plain display name.",
+            "items": { "type": "ref", "ref": "at.rolld.defs#player" }
+          },
+          "winnerDids": {
+            "type": "array",
+            "description": "DIDs of winning players, if any were recorded as identities.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "winnerNames": {
+            "type": "array",
+            "description": "Names of winners not represented by a DID.",
+            "items": { "type": "string", "maxLength": 320 }
+          },
+          "expansions": {
+            "type": "array",
+            "description": "Expansions in play, by BGG id.",
+            "items": { "type": "ref", "ref": "at.rolld.defs#gameRef" }
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Free text: whose house, which convention, which cafe."
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How long the session actually took."
+          },
+          "images": {
+            "type": "array",
+            "maxLength": 4,
+            "description": "Optional photos of the play (board, table, scores). Up to 4, matching Bluesky's per-post image limit so the same blobs can be embedded in a companion app.bsky.feed.post. Each blob lives in the user's PDS and is referenced here; the photo is part of the play (not a standalone record). Powers the per-game photo gallery via the existing plays-of-this-game Constellation query (filter plays that have images). See DECISIONS D-33.",
+            "items": { "type": "ref", "ref": "at.rolld.defs#image" }
+          },
+          "content": {
+            "type": "union",
+            "description": "Optional rich note about how the play went. Open union (bring-your-own-content, like standard.site's content field) so the format can grow without a breaking change. v1 accepts markpub Markdown. Render via the $type; consumers that don't understand it fall back to textContent.",
+            "refs": ["at.markpub.markdown"]
+          },
+          "textContent": {
+            "type": "string",
+            "description": "Plain-text rendering of `content`, always populated when `content` is present. The universal fallback for any consumer that can't render the content union's $type, and the field to index for search/previews. Same role as standard.site's textContent. No grapheme limit.",
+            "maxLength": 100000
+          },
+          "bskyPostRef": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "Strong ref (uri + cid) to a companion app.bsky.feed.post, if the user chose to share this play on Bluesky. The post links back to the per-entry permalink (/@<handle>/play/<rkey>). Storing the ref also enables showing Bluesky replies as discussion on the entry later (the Leaflet POSSE pattern)."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When this record was created."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+# Cloudflare Pages SPA fallback: every route is served by the single-page app,
+# which then client-side-routes (the game pages, profile, per-entry permalinks,
+# and the /did/<did>/... durable fallbacks). Real static files (assets, fonts,
+# oauth-client-metadata.json) are served before this rule.
+/*    /index.html    200

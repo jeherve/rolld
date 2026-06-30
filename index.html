@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>rolld — log your board game plays on atproto</title>
+    <meta
+      name="description"
+      content="Log the board games you play and rate them. Everything lives as records on your own atproto account — no database, nothing to lock you in."
+    />
+    <meta name="theme-color" content="#232530" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="rolld" />
+    <link
+      rel="preload"
+      href="/fonts/OverusedGrotesk-VF.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <!-- Open Graph / share preview -->
+    <meta property="og:title" content="rolld — log your board game plays on atproto" />
+    <meta
+      property="og:description"
+      content="Log the games you play and rate them. Your data lives on your own atproto account."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://rolld.at" />
+  </head>
+  <body>
+    <noscript>
+      rolld needs JavaScript. It's a static client-side app that talks straight to your atproto
+      account — no server-side logic, no tracking.
+    </noscript>
+    <div id="app" aria-busy="true"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

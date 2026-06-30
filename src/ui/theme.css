@@ -1,0 +1,326 @@
+/* ===========================================================================
+   rolld — visual identity (see docs/design-system.md)
+
+   Inherits the family system (warm-dark palette, 8-bit / pixel chrome, Overused
+   Grotesk + IBM Plex Mono) and changes exactly one thing: the accent is a
+   granite-rose (#E58AA0) drawn from Brittany's côte de granit rose, not the
+   personal pages' gold. Same bones, different signature.
+
+   Discipline: no border-radius, no blur shadows, no gradients — the pixel
+   language IS the design. Motion is blocky/stepped and always has a calm
+   prefers-reduced-motion fallback (D-36).
+   =========================================================================== */
+
+@font-face {
+  font-family: 'Overused Grotesk';
+  src: url('/fonts/OverusedGrotesk-VF.woff2') format('woff2-variations');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/ibm-plex-mono-latin-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/ibm-plex-mono-latin-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Base — inherited unchanged from the family system. */
+  --bg: #232530;
+  --panel: #2e3140;
+  --text: #f4f1e8;
+
+  /* Accent — rolld's own. */
+  --accent: #e58aa0; /* granite-rose — primary: borders, buttons, links, active fills */
+  --accent-2: #4fb89a; /* sea-green — secondary, used with restraint */
+
+  /* Status. */
+  --error: #ff6b6b;
+
+  /* Fonts. */
+  --font-body: 'Overused Grotesk', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* The pixel unit everything keys off. */
+  --pixel: 4px;
+  --shadow: var(--pixel) var(--pixel) 0 0 #00000066;
+
+  /* Reading column. */
+  --page-max: 640px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img {
+  image-rendering: pixelated;
+}
+
+#app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Press-translate is mouse-y; keep focus independently visible (quality floor). */
+:focus-visible {
+  outline: var(--pixel) solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.5rem;
+}
+h1 {
+  font-size: 2rem;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.muted {
+  opacity: 0.75;
+}
+
+/* ---- layout (mobile-first; D-35) ------------------------------------------ */
+
+.shell {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The narrow reading column for play logs, a single game, an entry. */
+.page {
+  width: 100%;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+main {
+  flex: 1;
+}
+
+/* ---- the three pixel-chrome moves (all inherited verbatim) ---------------- */
+
+.panel {
+  background: var(--panel);
+  border: var(--pixel) solid var(--accent);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.pixel-btn {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  background: var(--bg);
+  color: var(--accent);
+  border: var(--pixel) solid var(--accent);
+  box-shadow: var(--shadow);
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  /* Stop iOS treating rapid taps as a double-tap zoom; comfortable touch target. */
+  touch-action: manipulation;
+  min-height: 44px;
+}
+.pixel-btn:active {
+  transform: translate(var(--pixel), var(--pixel));
+  box-shadow: none;
+}
+.pixel-btn.is-active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--panel);
+  border: var(--pixel) solid var(--accent);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.tab {
+  font-family: var(--font-mono);
+  background: var(--bg);
+  color: var(--accent);
+  border: var(--pixel) solid var(--accent);
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+}
+.tab.is-active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.record,
+.post {
+  border-top: 2px solid var(--accent);
+  padding: 0.75rem 0;
+}
+
+/* ---- header --------------------------------------------------------------- */
+
+header.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: var(--pixel) solid var(--accent);
+}
+header.bar .wordmark {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 1.4rem;
+  color: var(--text);
+}
+header.bar .wordmark a {
+  color: inherit;
+}
+/* The two l's carry the two brand colours (brand-assets.md). */
+header.bar .wordmark .l1 {
+  color: var(--accent);
+}
+header.bar .wordmark .l2 {
+  color: var(--accent-2);
+}
+
+/* ---- footer (family signature; D-29) -------------------------------------- */
+
+footer.status {
+  border-top: var(--pixel) solid var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+footer.status .spacer {
+  flex: 1;
+}
+footer.status .iconlink {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text);
+  opacity: 0.8;
+}
+footer.status .iconlink:hover {
+  opacity: 1;
+}
+footer.status .iconlink svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: currentColor;
+}
+footer.status .avatar {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/* ---- personality motifs (chrome only; D-36) ------------------------------- */
+
+/* Loading → tumbling dice. The mark in motion. Blocky/stepped, never blocks input. */
+.dice-loader {
+  display: inline-grid;
+  place-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+.dice-loader .die {
+  width: calc(var(--pixel) * 8);
+  height: calc(var(--pixel) * 8);
+  background: var(--accent);
+  box-shadow: var(--shadow);
+  animation: tumble 0.9s steps(4, end) infinite;
+}
+@keyframes tumble {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Empty / error states share the centred, panel-on-table layout. */
+.state {
+  text-align: center;
+  padding: 2rem 1rem;
+  display: grid;
+  gap: 0.75rem;
+  place-items: center;
+}
+.state .motif {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+.state .title {
+  font-weight: 800;
+  font-size: 1.25rem;
+}
+.state.is-error .title {
+  color: var(--error);
+}
+
+/* ---- motion discipline (non-negotiable; D-36, quality floor) -------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  /* The tumbling die settles to a calm, still mark rather than spinning. */
+  .dice-loader .die {
+    animation: none !important;
+  }
+}

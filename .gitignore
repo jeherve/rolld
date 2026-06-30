@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+.vite/
+.wrangler/
+coverage/
+*.log
+
+# Internal working docs — kept on disk as the team's operating manual, not shipped.
+docs/
+CLAUDE.md
+KICKOFF.md
