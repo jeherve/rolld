@@ -97,4 +97,41 @@ describe('validation', () => {
     r.images = [noAlt];
     expect(validatePlay(r)).toContain('images[0].alt: alt text is required (D-33)');
   });
+
+  // Regression: atproto maxLength is a UTF-8 BYTE limit. Measuring String.length
+  // (UTF-16 code units) lets multibyte text slip past, then the PDS rejects it.
+  it('measures string limits in UTF-8 bytes, not code units', () => {
+    // 250 CJK chars = 250 code units but 750 bytes — over the 500-byte location cap.
+    const r = buildPlayRecord({ game: GAME, location: '東'.repeat(250), now: at });
+    expect(r.location!.length).toBe(250); // would pass a naive .length <= 500 check
+    expect(validatePlay(r)).toContain('location: ≤500 bytes');
+  });
+
+  it('accepts a multibyte location that is within the byte budget', () => {
+    const r = buildPlayRecord({ game: GAME, location: '東'.repeat(150), now: at }); // 450 bytes
+    expect(validatePlay(r)).toEqual([]);
+  });
+
+  it('flags a multibyte gameRef name over 512 bytes', () => {
+    const r = buildPlayRecord({ game: { id: '1', name: '東'.repeat(200) }, now: at }); // 600 bytes
+    expect(validatePlay(r).some((e) => e.includes('name: required, ≤512 bytes'))).toBe(true);
+  });
+
+  // Regression: the lexicon declares these as `integer`; a fractional value passes
+  // a sign-only check and then the PDS rejects it.
+  it('flags a non-integer durationMinutes', () => {
+    const r = buildPlayRecord({ game: GAME, durationMinutes: 30.5, now: at });
+    expect(validatePlay(r)).toContain('durationMinutes: must be an integer');
+  });
+
+  it('still flags a negative durationMinutes', () => {
+    const r = buildPlayRecord({ game: GAME, durationMinutes: -1, now: at });
+    expect(validatePlay(r)).toContain('durationMinutes: must be ≥0');
+  });
+
+  it('flags a non-integer player score', () => {
+    const r = buildPlayRecord({ game: GAME, now: at });
+    r.players = [{ displayName: 'Sam', score: 7.5 }];
+    expect(validatePlay(r)).toContain('players[0].score: must be an integer');
+  });
 });
