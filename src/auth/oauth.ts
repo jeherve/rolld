@@ -22,14 +22,11 @@ import {
 import {
   CompositeDidDocumentResolver,
   LocalActorResolver,
-  PlcDidDocumentResolver,
   WebDidDocumentResolver,
-  XrpcHandleResolver,
 } from '@atcute/identity-resolver';
 import { RolldAgent } from '../atproto/client.js';
+import { createHandleResolver, createPlcResolver } from './resolvers.js';
 
-/** The PDS consent screen forbids `localhost`; the AppView resolves handles for web apps. */
-const APPVIEW = 'https://public.api.bsky.app';
 const DID_KEY = 'rolld:did';
 
 let agent: RolldAgent | null = null;
@@ -41,10 +38,12 @@ export function initOAuth(): void {
       client_id: import.meta.env.VITE_OAUTH_CLIENT_ID,
       redirect_uri: import.meta.env.VITE_OAUTH_REDIRECT_URI,
     },
+    // Handle + did:plc resolution prefer sovereign services (Slingshot, the eurosky
+    // PLC mirror) and fall back to the Bluesky-run canonical — AppView-agnostic (D-51).
     identityResolver: new LocalActorResolver({
-      handleResolver: new XrpcHandleResolver({ serviceUrl: APPVIEW }),
+      handleResolver: createHandleResolver(),
       didDocumentResolver: new CompositeDidDocumentResolver({
-        methods: { plc: new PlcDidDocumentResolver(), web: new WebDidDocumentResolver() },
+        methods: { plc: createPlcResolver(), web: new WebDidDocumentResolver() },
       }),
     }),
   });

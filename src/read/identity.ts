@@ -8,7 +8,7 @@
  * verified" signal — surface it, don't hide it. Prefer the `blue.microcosm.*`
  * alias; the network read is injectable so callers can degrade gracefully.
  */
-import { PUBLIC_APPVIEW, SLINGSHOT_BASE } from '../config.js';
+import { APPVIEW_API, SLINGSHOT_BASE } from '../config.js';
 
 export interface MiniDoc {
   did: string;
@@ -65,7 +65,7 @@ export async function resolveHandleFallback(
   opts: IdentityOptions = {},
 ): Promise<string | null> {
   const fetchImpl = opts.fetchImpl ?? fetch;
-  const base = opts.baseUrl ?? PUBLIC_APPVIEW;
+  const base = opts.baseUrl ?? APPVIEW_API;
   try {
     const res = await fetchImpl(
       `${base}/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(handle)}`,

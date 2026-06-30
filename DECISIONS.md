@@ -699,6 +699,33 @@ maintainer hits at launch; better to have them written down than rediscovered. *
 the schemas parse and validate cleanly against the official tooling; only the publish *command*
 differs from what the brief assumed.
 
+### D-51 — AppView-agnostic by config: Bluesky is the default, not a hard dependency.
+The Phase 2/3 code reached for Bluesky-run services by name in a few places — the OAuth
+handle resolver pointed only at `public.api.bsky.app`, `did:plc` resolution used atcute's
+default (`plc.directory`), and the read clients, actor typeahead, and "view/reply" links all
+hard-coded Bluesky hosts. That was the atmot template showing through. But Bluesky is just
+*one* AppView now: eurosky/mu run a full parallel stack (PLC mirror, relay, PDS, AppView)
+speaking the same lexicons over the same DIDs, and the maintainer's skypress did the same
+decoupling (eurosky PLC mirror first; view links centralized to a swappable host). **Decision:**
+treat every Bluesky touchpoint as a configurable seam, with Bluesky as the *default*, not a hard
+dependency. Concretely: (1) login handle→DID and `did:plc` resolution try a sovereign service
+first and fall back to the Bluesky-run canonical — Slingshot then the AppView for handles
+(`createHandleResolver`), the eurosky EU mirror then `plc.directory` for PLC docs
+(`createPlcResolver`), the same ordered-fallback shape the read side already uses in
+`read/identity.ts`; (2) the AppView read host is one constant (`APPVIEW_API`) feeding the
+profile/follows/thread reads and the actor typeahead, so a deployer repoints all of them at
+once; (3) human-facing links go through `share/atmosphere-url.ts` against `APPVIEW_WEB`, a
+one-line swap; (4) user-facing copy says "the Atmosphere", not "Bluesky" — the network isn't
+one company's app. **Why:** it matches rolld's spine (data ownership, no lock-in, honest about
+the tech) and the read side's existing microcosm-first stance; the login path was the one place
+still Bluesky-only despite a sovereign alternative (Slingshot) being right there. **Cost
+accepted:** the AppView *reads* still depend on the `app.bsky.*` lexicons (profiles, the follows
+graph, post threads) — "agnostic" here means "any AppView serving those lexicons", not "no bsky
+lexicon", because there's no microcosm substitute for that social data. The eurosky PLC mirror and
+Slingshot's `resolveHandle` are the primaries but unproven under rolld's load, so canonical
+Bluesky stays the fallback rather than being dropped. The maintainer's own profile byline keeps
+its real `bsky.app` link (it's a person, not a generic AppView destination).
+
 ---
 
 ## How to use this file

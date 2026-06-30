@@ -45,8 +45,27 @@ export const SLINGSHOT_BASE = 'https://slingshot.microcosm.blue';
 /** Spacedust — live links firehose websocket (D-26; the feed's live tail). */
 export const SPACEDUST_BASE = 'wss://spacedust.microcosm.blue';
 
-/** Public Bluesky AppView — follows graph, actor search, profile chrome, post threads. */
-export const PUBLIC_APPVIEW = 'https://public.api.bsky.app';
+/**
+ * AppView API host — the XRPC read seam for `app.bsky.*` (follows graph, actor
+ * search, profile chrome, post threads). rolld is AppView-agnostic: any service
+ * that speaks these lexicons works, so a deployer can repoint this at mu/eurosky's
+ * AppView. Bluesky's public, keyless AppView is the default for now because it's
+ * the most complete (D-51).
+ */
+export const APPVIEW_API = 'https://public.api.bsky.app';
+
+/**
+ * AppView *web* host — where human-facing "view / reply on the Atmosphere" links
+ * land. Kept separate from the API host so the read backend and the click-through
+ * can differ, and so swapping the destination is a one-line change (D-51).
+ */
+export const APPVIEW_WEB = 'https://bsky.app';
+
+/**
+ * did:plc resolution hosts, tried in order: the eurosky EU mirror first (sovereign
+ * by default), the canonical Bluesky-run directory as the safety net (D-51).
+ */
+export const PLC_HOSTS = ['https://plc.eurosky.network', 'https://plc.directory'] as const;
 
 /** Sent on every microcosm request (they ask for a descriptive UA + contact). */
 export const USER_AGENT = `rolld/0.0 (+${ORIGIN}; board game tracker; ${REPO_URL})`;

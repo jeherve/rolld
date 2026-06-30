@@ -1,15 +1,15 @@
 /**
  * Player typeahead (CC-2, D-34). Resolving a typed name to a real atproto identity
- * uses Bluesky's public `searchActorsTypeahead` on `public.api.bsky.app` —
- * unauthenticated, keyless, and fast, so it can feel near-instant (unlike the
- * server-proxied, rate-limited BGG game search). This mirrors the author's skypress
- * @-mention pattern: search via the public AppView, store the resolved DID.
+ * uses `app.bsky.actor.searchActorsTypeahead` on the configured AppView (D-51,
+ * default `public.api.bsky.app`) — unauthenticated, keyless, and fast, so it can
+ * feel near-instant (unlike the server-proxied, rate-limited BGG game search). This
+ * mirrors the author's skypress @-mention pattern: search via the AppView, store the
+ * resolved DID.
  *
  * Distinct from Slingshot `resolveMiniDoc`, which *verifies* a single known handle
  * (D-14). Typeahead finds candidates; resolveMiniDoc confirms one. Different jobs.
  */
-
-const APPVIEW = 'https://public.api.bsky.app';
+import { APPVIEW_API } from '../config.js';
 
 export interface Actor {
   did: string;
@@ -30,7 +30,7 @@ export async function searchActors(query: string, opts: ActorSearchOptions = {})
   const q = query.trim();
   if (q.length < 1) return [];
   const fetchImpl = opts.fetchImpl ?? fetch;
-  const base = opts.baseUrl ?? APPVIEW;
+  const base = opts.baseUrl ?? APPVIEW_API;
   const limit = opts.limit ?? 8;
   const url = `${base}/xrpc/app.bsky.actor.searchActorsTypeahead?q=${encodeURIComponent(q)}&limit=${limit}`;
   try {

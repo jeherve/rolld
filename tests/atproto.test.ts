@@ -108,4 +108,10 @@ describe('searchActors (CC-2)', () => {
     expect(await searchActors('   ')).toEqual([]);
     expect(await searchActors('x', { fetchImpl: async () => new Response('', { status: 500 }) })).toEqual([]);
   });
+
+  it('targets the configured AppView host by default (D-51)', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => ok([]));
+    await searchActors('ad', { fetchImpl });
+    expect(String(fetchImpl.mock.calls[0]![0])).toContain('https://public.api.bsky.app/xrpc/');
+  });
 });

@@ -9,9 +9,9 @@
 import './../atproto/register.js';
 import { Client, ok, simpleFetchHandler } from '@atcute/client';
 import type { ActorIdentifier, ResourceUri } from '@atcute/lexicons/syntax';
-import { PUBLIC_APPVIEW } from '../config.js';
+import { APPVIEW_API } from '../config.js';
 
-export function appviewClient(base: string = PUBLIC_APPVIEW): Client {
+export function appviewClient(base: string = APPVIEW_API): Client {
   return new Client({ handler: simpleFetchHandler({ service: base }) });
 }
 
