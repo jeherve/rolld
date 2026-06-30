@@ -76,6 +76,54 @@ describe('worker moderation + feed routes', () => {
     expect(await res.json()).toEqual({ dids: ['did:plc:bad'], uris: [] });
   });
 
+  it('GET /api/blob clamps a non-image content-type to octet-stream with nosniff (XSS guard)', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const u = String(input);
+      if (u.includes('resolveMiniDoc')) {
+        return new Response(JSON.stringify({ did: 'did:plc:x', handle: 'x.test', pds: 'https://pds.test' }), {
+          status: 200,
+        });
+      }
+      // A malicious "image" blob served as text/html by the PDS.
+      return new Response('<script>alert(1)</script>', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    const res = await worker.fetch(
+      new Request('https://rolld.at/api/blob/did:plc:x/bafyimg'),
+      env(fakeKv()),
+    );
+    expect(res.headers.get('Content-Type')).toBe('application/octet-stream');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(res.headers.get('Content-Security-Policy')).toContain('sandbox');
+  });
+
+  it('GET /api/blob refuses a blocked DID (D-41)', async () => {
+    const kv = fakeKv({ 'moderation:blocklist': JSON.stringify({ dids: ['did:plc:bad'], uris: [] }) });
+    const res = await worker.fetch(
+      new Request('https://rolld.at/api/blob/did:plc:bad/bafyimg'),
+      env(kv),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it('passes through a real image content-type', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const u = String(input);
+      if (u.includes('resolveMiniDoc')) {
+        return new Response(JSON.stringify({ did: 'did:plc:x', handle: 'x.test', pds: 'https://pds.test' }), {
+          status: 200,
+        });
+      }
+      return new Response('jpegbytes', { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    const res = await worker.fetch(new Request('https://rolld.at/api/blob/did:plc:x/c'), env(fakeKv()));
+    expect(res.headers.get('Content-Type')).toBe('image/jpeg');
+  });
+
   it('GET /@<handle>/feed.xml resolves, reads plays, and serializes RSS', async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const u = String(input);

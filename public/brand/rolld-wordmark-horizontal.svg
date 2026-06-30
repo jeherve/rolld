@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="120" viewBox="0 0 44 12" shape-rendering="crispEdges">
+  <!-- Pixel-die icon (rose d6, five pips) -->
+  <rect x="2" y="2" width="9" height="9" fill="#00000066"/>
+  <rect x="1" y="1" width="9" height="9" fill="#E58AA0"/>
+  <rect x="2.3" y="2.3" width="1.4" height="1.4" fill="#232530"/>
+  <rect x="7.3" y="2.3" width="1.4" height="1.4" fill="#232530"/>
+  <rect x="4.8" y="4.8" width="1.4" height="1.4" fill="#232530"/>
+  <rect x="2.3" y="7.3" width="1.4" height="1.4" fill="#232530"/>
+  <rect x="7.3" y="7.3" width="1.4" height="1.4" fill="#232530"/>
+  <!-- Wordmark "rolld": the two L's carry the two brand colors (rose + sea-green),
+       the rest in cream. Per-letter tspans so each glyph can be colored. -->
+  <text x="14" y="9.4" font-family="IBM Plex Mono, monospace" font-size="8" font-weight="600" letter-spacing="-0.2">
+    <tspan fill="#f4f1e8">r</tspan><tspan fill="#f4f1e8">o</tspan><tspan fill="#E58AA0">l</tspan><tspan fill="#4FB89A">l</tspan><tspan fill="#f4f1e8">d</tspan>
+  </text>
+</svg>

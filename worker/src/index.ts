@@ -148,10 +148,21 @@ async function serveBlob(request: Request, env: Env, did: string, cid: string): 
   const blobRes = await fetch(
     `${pds}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`,
   );
+  // The blob's stored mime type is attacker-controlled, and this Worker is served on
+  // the app's own origin — so a user could upload an HTML "image" and get it served as
+  // text/html (stored XSS). Clamp to an image allowlist, refuse to sniff, and sandbox
+  // via CSP so anything that slips through can't execute. rolld only ever serves images.
+  const upstreamType = blobRes.headers.get('Content-Type') ?? '';
+  const safeType = /^image\/(jpeg|png|webp|gif|avif)$/i.test(upstreamType)
+    ? upstreamType
+    : 'application/octet-stream';
   return new Response(blobRes.body, {
     status: blobRes.status,
     headers: {
-      'Content-Type': blobRes.headers.get('Content-Type') ?? 'application/octet-stream',
+      'Content-Type': safeType,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; sandbox",
+      'Content-Disposition': 'inline',
       'Cache-Control': 'public, max-age=604800',
       ...corsHeaders(request),
     },

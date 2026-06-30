@@ -1,0 +1,75 @@
+/**
+ * Small reusable view pieces (Phase 4) — avatars, game covers, grade badges, the
+ * report link, and the async-region helper every data page uses. They return
+ * `SafeHtml` (escape-by-default) so pages compose them without thinking about XSS.
+ * BGG covers fall back to the game's name snapshot immediately (D-32/CC-5): a row
+ * never blocks on an image.
+ */
+import type { GameMetadata } from '../bgg/types.js';
+import { ABUSE_EMAIL, API_BASE } from '../config.js';
+import { gamePath, profilePath } from '../links.js';
+import { html, render, type SafeHtml } from './html.js';
+
+/** Photo blob URL — served through the Worker so the moderation blob-refuse applies (D-41). */
+export function blobUrl(did: string, cid: string): string {
+  return `${API_BASE}/api/blob/${encodeURIComponent(did)}/${encodeURIComponent(cid)}`;
+}
+
+/** A circular-ish avatar (pixel square, per the theme), or a neutral placeholder. */
+export function avatar(url: string | undefined, alt: string, size = 40): SafeHtml {
+  if (!url) return html`<span class="avatar ph" style="width:${size}px;height:${size}px" aria-hidden="true"></span>`;
+  return html`<img class="avatar" src="${url}" alt="${alt}" width="${size}" height="${size}" loading="lazy" />`;
+}
+
+/** A game cover/thumbnail; until BGG metadata loads, show the name snapshot (CC-5). */
+export function gameCover(name: string, meta: GameMetadata | null, size = 56): SafeHtml {
+  const src = meta?.thumbnail ?? meta?.image;
+  if (src) return html`<img class="cover" src="${src}" alt="${name}" width="${size}" height="${size}" loading="lazy" />`;
+  return html`<span class="cover ph" style="width:${size}px;height:${size}px" aria-hidden="true">${name.slice(0, 2)}</span>`;
+}
+
+/** A grade badge, "8/10", in the sea-green secondary so it reads as a distinct signal. */
+export function gradeBadge(rating: number): SafeHtml {
+  return html`<span class="grade mono">${rating}/10</span>`;
+}
+
+/** A link to a game page. */
+export function gameLink(id: string, name: string): SafeHtml {
+  return html`<a href="${gamePath(id)}" data-link>${name}</a>`;
+}
+
+/** A link to a person's profile by handle. */
+export function profileLink(handle: string, label?: string): SafeHtml {
+  return html`<a href="${profilePath(handle)}" data-link>${label ?? `@${handle}`}</a>`;
+}
+
+/** The unobtrusive report affordance on every item (CC-8, D-41). */
+export function reportLink(itemUri: string): SafeHtml {
+  const subject = encodeURIComponent('Reporting content on rolld');
+  const body = encodeURIComponent(`I'd like to report this item:\n${itemUri}\n\nWhat's wrong:\n`);
+  return html`<a class="report mono" href="mailto:${ABUSE_EMAIL}?subject=${subject}&body=${body}">⚐ Report</a>`;
+}
+
+/** Section heading used across pages. */
+export function sectionTitle(text: string): SafeHtml {
+  return html`<h2 class="section">${text}</h2>`;
+}
+
+/**
+ * Render a loading state immediately, then run `load` and render its result (or a
+ * themed error, CC-5). The pattern every network-backed page uses so the user never
+ * sees a blank screen that looks "done".
+ */
+export async function asyncRegion(
+  target: Element,
+  loading: SafeHtml,
+  load: () => Promise<SafeHtml>,
+  onError: (err: unknown) => SafeHtml,
+): Promise<void> {
+  render(target, loading);
+  try {
+    render(target, await load());
+  } catch (err) {
+    render(target, onError(err));
+  }
+}

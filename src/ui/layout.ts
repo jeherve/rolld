@@ -1,18 +1,19 @@
 import { render, html, type SafeHtml } from './html.js';
+import type { AppState } from './context.js';
 import { renderHeader } from './header.js';
 import { renderFooter } from './footer.js';
 
 /**
- * Paint the persistent chrome once: header at the top, footer at the bottom, and
- * a `<main>` mount point the router re-renders per view. Mobile-first — the shell
- * is a single column; wider gridded layouts come per-page in Phase 4 (D-35).
+ * Paint the persistent chrome: header (reflecting auth state) at the top, footer at
+ * the bottom, and a `<main>` mount point the router re-renders per view. Re-called
+ * on sign-in/out to refresh the header. Mobile-first single column (D-35).
  */
-export function mountShell(root: HTMLElement): HTMLElement {
+export function mountShell(root: HTMLElement, state: AppState): HTMLElement {
   render(
     root,
     html`
       <div class="shell">
-        ${renderHeader()}
+        ${renderHeader(state)}
         <main id="main"></main>
         ${renderFooter()}
       </div>

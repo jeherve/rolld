@@ -1,49 +1,112 @@
 import './ui/theme.css';
+import { completeLogin, initOAuth, restoreSession } from './auth/oauth.js';
+import type { RolldAgent } from './atproto/client.js';
+import { resolveMiniDoc } from './read/identity.js';
 import { createRouter } from './router/router.js';
-import { mountShell, renderView } from './ui/layout.js';
-import { renderLanding } from './ui/landing.js';
-import { emptyState, errorState } from './ui/states.js';
+import type { AppState, PageCtx, SessionInfo } from './ui/context.js';
+import { openLogFlow } from './ui/flows.js';
+import { mountShell } from './ui/layout.js';
+import * as views from './ui/views.js';
 
 const root = document.getElementById('app')!;
-const main = mountShell(root);
+const state: AppState = { session: null };
+let main = mountShell(root, state);
 
-/**
- * Stub route table for the scaffold. Each route renders a placeholder view into
- * the main mount point; the real pages land per phase (read-only public pages
- * first in Phase 4). The frozen `/g/<bggId>` target helper is owned by Phase 2.
- */
+const ctx: PageCtx = {
+  get main() {
+    return main;
+  },
+  navigate: (path) => router.navigate(path),
+  replace: (path) => {
+    history.replaceState(null, '', path);
+  },
+  state,
+  refreshChrome: () => {
+    main = mountShell(root, state);
+  },
+};
+
 const router = createRouter({
   routes: {
-    '/': () => renderView(main, renderLanding()),
-    '/dashboard': () =>
-      renderView(
-        main,
-        emptyState({
-          title: 'Your dashboard is empty',
-          body: 'Log a play and it shows up here, alongside what your friends are playing.',
-        }),
-      ),
+    '/': () => views.home(ctx),
+    '/login': () => views.login(ctx),
+    '/oauth/callback': () => void handleCallback(),
+    '/dashboard': () => views.dashboard(ctx),
+    '/search': () => views.search(ctx),
+    '/settings': () => views.settings(ctx),
+    '/about': () => views.about(ctx),
+    '/community-guidelines': () => views.policy(ctx, 'community-guidelines'),
+    '/terms': () => views.policy(ctx, 'terms'),
+    '/privacy': () => views.policy(ctx, 'privacy'),
+    '/g/:bggId': (m) => views.gamePage(ctx, m.params.bggId!),
+    '/g/:bggId/plays': (m) => views.gamePlaysList(ctx, m.params.bggId!),
+    '/@:handle': (m) => views.profile(ctx, m.params.handle!),
+    '/@:handle/plays': (m) => views.playLog(ctx, m.params.handle!),
+    '/@:handle/play/:rkey': (m) => views.entry(ctx, 'play', m.params.handle!, m.params.rkey!),
+    '/@:handle/rating/:rkey': (m) => views.entry(ctx, 'rating', m.params.handle!, m.params.rkey!),
+    '/@:handle/g/:bggId': (m) => views.userGame(ctx, m.params.handle!, m.params.bggId!),
+    '/did/:did/play/:rkey': (m) => views.entryByDid(ctx, 'play', m.params.did!, m.params.rkey!),
+    '/did/:did/rating/:rkey': (m) => views.entryByDid(ctx, 'rating', m.params.did!, m.params.rkey!),
   },
-  notFound: () =>
-    renderView(
-      main,
-      errorState({
-        motif: '🗺️',
-        title: 'We can’t find that page',
-        body: 'The link may be wrong, or the page isn’t built yet. Head back to the start.',
-      }),
-    ),
+  notFound: () => views.notFound(ctx),
 });
 
-// Intercept in-app links (anchors marked data-link) for client-side navigation.
+/** Build the session info (resolve the user's handle + PDS) from an authed agent. */
+async function setSession(agent: RolldAgent): Promise<void> {
+  const doc = await resolveMiniDoc(agent.did);
+  const session: SessionInfo = {
+    agent,
+    did: agent.did,
+    handle: doc?.handle ?? agent.did,
+    pds: doc?.pds ?? '',
+  };
+  state.session = session;
+  ctx.refreshChrome();
+}
+
+/** The OAuth redirect lands here: finalize, then return the user where they started. */
+async function handleCallback(): Promise<void> {
+  try {
+    const agent = await completeLogin();
+    await setSession(agent);
+  } catch {
+    // fall through to dashboard/login below
+  }
+  const returnTo = sessionStorage.getItem('rolld:returnTo') ?? '/dashboard';
+  sessionStorage.removeItem('rolld:returnTo');
+  router.navigate(state.session ? returnTo : '/login');
+}
+
+// In-app link interception (anchors marked data-link) for client-side navigation.
 document.addEventListener('click', (e) => {
   const link = (e.target as HTMLElement)?.closest<HTMLAnchorElement>('a[data-link]');
-  if (!link) return;
-  const href = link.getAttribute('href');
-  if (!href || !href.startsWith('/')) return;
-  e.preventDefault();
-  router.navigate(href);
+  if (link) {
+    const href = link.getAttribute('href');
+    if (href && href.startsWith('/')) {
+      e.preventDefault();
+      router.navigate(href);
+    }
+    return;
+  }
+  // The global "Log a play" action (header + dashboard), thumb-reach CTA (D-35).
+  const logBtn = (e.target as HTMLElement)?.closest('[data-action="log"]');
+  if (logBtn) {
+    if (state.session) openLogFlow(ctx);
+    else router.navigate('/login');
+  }
 });
 
-router.start();
-root.removeAttribute('aria-busy');
+// Boot: configure OAuth, restore any session, then route.
+initOAuth();
+void (async () => {
+  if (location.pathname !== '/oauth/callback') {
+    try {
+      const agent = await restoreSession();
+      if (agent) await setSession(agent);
+    } catch {
+      /* not signed in */
+    }
+  }
+  router.start();
+  root.removeAttribute('aria-busy');
+})();

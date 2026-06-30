@@ -26,6 +26,9 @@ export const PROFILE_RKEY = 'self';
 export const AUTHOR_PROFILE_URL = 'https://bsky.app/profile/jeremy.herve.bzh';
 export const REPO_URL = 'https://tangled.org/jeremy.herve.bzh/rolld';
 
+/** Where abuse reports go (D-41, CC-8). The inbox is a maintainer action item. */
+export const ABUSE_EMAIL = 'abuse@rolld.at';
+
 /**
  * Base URL for the rolld Worker (the BGG gateway + cache; D-3/D-31). Empty string
  * means same-origin (`/api/…` under `rolld.at` in production). In dev, point it at

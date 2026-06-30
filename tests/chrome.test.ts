@@ -13,13 +13,13 @@ function mount(part: ReturnType<typeof renderHeader>): HTMLElement {
 
 describe('renderHeader', () => {
   it('links the lowercase wordmark home', () => {
-    const a = mount(renderHeader()).querySelector('.wordmark a');
+    const a = mount(renderHeader({ session: null })).querySelector('.wordmark a');
     expect(a?.getAttribute('href')).toBe('/');
     expect(a?.textContent).toBe('rolld');
   });
 
   it('carries the two-colour double-l', () => {
-    const root = mount(renderHeader());
+    const root = mount(renderHeader({ session: null }));
     expect(root.querySelector('.wordmark .l1')).not.toBeNull();
     expect(root.querySelector('.wordmark .l2')).not.toBeNull();
   });

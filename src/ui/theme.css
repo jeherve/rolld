@@ -324,3 +324,512 @@ footer.status .avatar {
     animation: none !important;
   }
 }
+
+/* ===========================================================================
+   Phase 4 — pages, components, flows (mobile-first; D-35). Stays inside the
+   pixel language: hard borders + offset shadows, no radius/blur/gradient.
+   =========================================================================== */
+
+/* ---- header nav ----------------------------------------------------------- */
+header.bar .hnav {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+header.bar .hnav a {
+  color: var(--text);
+}
+.pixel-btn.small {
+  padding: 0.35rem 0.7rem;
+  min-height: 36px;
+  font-size: 0.8rem;
+}
+
+/* ---- generic form controls ------------------------------------------------ */
+.text-input {
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  border: var(--pixel) solid var(--accent);
+  padding: 0.55rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.text-input:focus-visible {
+  outline: 2px solid var(--accent-2);
+}
+.text-input.small {
+  font-size: 0.85rem;
+  padding: 0.4rem;
+}
+label.mono {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+.small {
+  font-size: 0.8rem;
+}
+
+/* ---- landing -------------------------------------------------------------- */
+.landing {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+.hero {
+  text-align: center;
+  display: grid;
+  gap: 0.75rem;
+  place-items: center;
+  padding: 1.5rem 0 2.5rem;
+}
+.hero-mark {
+  image-rendering: pixelated;
+}
+.hero h1 {
+  font-size: 2rem;
+  max-width: 14ch;
+}
+.hero .lede {
+  max-width: 48ch;
+  font-size: 1.1rem;
+}
+.hero-cta {
+  font-size: 1.05rem;
+  margin-top: 0.5rem;
+}
+.beats {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+.beat {
+  background: var(--panel);
+  border: var(--pixel) solid var(--accent);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+.beat-icon {
+  font-size: 1.75rem;
+}
+.beat h2 {
+  font-size: 1.05rem;
+  margin: 0.4rem 0 0.25rem;
+}
+
+/* ---- dashboard + feed cards ----------------------------------------------- */
+.dash-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.feed-card {
+  background: var(--panel);
+  border: var(--pixel) solid var(--accent);
+  box-shadow: var(--shadow);
+  padding: 0.9rem;
+  margin-bottom: 1rem;
+}
+.fc-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fc-head .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-weight: 700;
+}
+.fc-head .when {
+  margin-left: auto;
+  font-size: 0.78rem;
+}
+.fc-game {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+  color: var(--text);
+}
+.fc-game .g-name {
+  font-weight: 700;
+}
+.fc-meta {
+  font-size: 0.82rem;
+}
+.note-snippet {
+  margin: 0.5rem 0;
+}
+.fc-foot {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+}
+.report {
+  color: var(--text);
+  opacity: 0.6;
+}
+.permalink {
+  color: var(--accent-2);
+}
+
+/* avatars + covers ---------------------------------------------------------- */
+.avatar,
+.cover {
+  display: inline-block;
+  object-fit: cover;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+  flex: none;
+}
+.avatar.ph,
+.cover.ph {
+  display: inline-grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.grade {
+  display: inline-block;
+  background: var(--accent-2);
+  color: var(--bg);
+  padding: 0.05rem 0.4rem;
+  font-weight: 600;
+}
+
+/* photos -------------------------------------------------------------------- */
+.photos {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+.photo {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border: 2px solid var(--accent);
+}
+.photos.big .photo {
+  width: 160px;
+  height: 160px;
+}
+
+/* ---- game page ------------------------------------------------------------ */
+.game-hero {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+.facts {
+  font-size: 0.85rem;
+}
+.cta-row {
+  display: flex;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.your-stats,
+.community,
+.game-desc {
+  margin-bottom: 1rem;
+}
+.section {
+  font-size: 1rem;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.6rem;
+}
+.linkouts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  margin: 1rem 0;
+}
+.bgg-credit {
+  font-size: 0.72rem;
+}
+
+/* ---- profile -------------------------------------------------------------- */
+.profile-head .banner {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border: var(--pixel) solid var(--accent);
+}
+.profile-id {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+.bio {
+  margin: 0.5rem 0;
+}
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.grid-game {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.gg-count {
+  font-size: 0.72rem;
+}
+.rated-shelf {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+.rated-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text);
+  border-bottom: 2px solid var(--accent);
+  padding: 0.4rem 0;
+}
+
+/* ---- entry permalink + comments ------------------------------------------- */
+.entry-game {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.note {
+  margin: 1rem 0;
+}
+.note pre {
+  background: var(--bg);
+  border: 2px solid var(--accent);
+  padding: 0.6rem;
+  overflow-x: auto;
+}
+.note a {
+  color: var(--accent-2);
+}
+.entry-foot {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+.comment {
+  border-top: 2px solid var(--accent);
+  padding: 0.5rem 0;
+}
+
+/* ---- search + records ----------------------------------------------------- */
+.search-form,
+.login-form {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.record {
+  display: block;
+  border-top: 2px solid var(--accent);
+  padding: 0.6rem 0;
+  color: var(--text);
+}
+
+/* ---- prose (about/policy) ------------------------------------------------- */
+.prose {
+  max-width: 640px;
+}
+.prose h2 {
+  font-size: 1.1rem;
+  margin-top: 1.5rem;
+}
+.prose p {
+  margin: 0.6rem 0;
+}
+
+/* ---- sign-in card --------------------------------------------------------- */
+.signin-card {
+  display: grid;
+  gap: 0.5rem;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+/* ---- bottom sheet (flows; D-35 thumb reach) ------------------------------- */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000000aa;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+.sheet {
+  background: var(--panel);
+  border-top: var(--pixel) solid var(--accent);
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 1rem;
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.sheet-close {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.sheet form {
+  display: grid;
+  gap: 0.4rem;
+}
+.submit-cta {
+  margin-top: 0.75rem;
+  position: sticky;
+  bottom: 0;
+}
+.add-details summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  padding: 0.5rem 0;
+  color: var(--accent);
+}
+.share-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+/* typeahead ----------------------------------------------------------------- */
+.typeahead {
+  display: grid;
+}
+.ta-item {
+  text-align: left;
+  background: var(--bg);
+  color: var(--text);
+  border: 2px solid var(--accent);
+  border-top: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 0.3rem 0.5rem;
+  font-family: var(--font-mono);
+}
+.chip button {
+  background: none;
+  border: none;
+  color: var(--bg);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.player-row {
+  display: grid;
+  grid-template-columns: 1fr 80px auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+.grade-picker {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+.grade-btn {
+  padding: 0.5rem;
+  min-height: 44px;
+}
+#count.over {
+  color: var(--error);
+}
+
+/* success beat (D-36) ------------------------------------------------------- */
+.success-beat {
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  padding: 0.6rem 1rem;
+  box-shadow: var(--shadow);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.die-settled {
+  width: 16px;
+  height: 16px;
+  background: var(--bg);
+  display: inline-block;
+  animation: settle 0.4s steps(3, end) 1;
+}
+@keyframes settle {
+  0% {
+    transform: translateY(-8px) rotate(90deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+}
+
+/* ---- desktop enhancement (D-35: narrow first, widen up) ------------------- */
+@media (min-width: 720px) {
+  .beats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .game-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .sheet-overlay {
+    align-items: center;
+  }
+  .sheet {
+    border: var(--pixel) solid var(--accent);
+    box-shadow: var(--shadow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .die-settled {
+    animation: none !important;
+  }
+}
