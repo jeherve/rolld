@@ -33,7 +33,7 @@ export function renderLanding(): SafeHtml {
         <div class="beat">
           <span class="beat-icon" aria-hidden="true">👋</span>
           <h2>Social when you want it</h2>
-          <p>Share a play to Bluesky, and your people can follow along.</p>
+          <p>Share a play to the Atmosphere, and your people can follow along.</p>
         </div>
       </section>
     </div>

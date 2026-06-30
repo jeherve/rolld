@@ -2,7 +2,7 @@
  * The pages (Phase 4). Each is a render-from-state function: paint the chrome and a
  * loading state at once, then fetch and repaint as data arrives (CC-5). Public read
  * pages (game, profile, entry) need no sign-in and render well logged-out, since
- * they're where shared Bluesky links land (D-40). Copy is in the maintainer's plain,
+ * they're where shared Atmosphere links land (D-40). Copy is in the maintainer's plain,
  * warm voice (D-30): sentence case, invitations not dead-ends, honest about the tech.
  */
 import { beginLogin, signOut } from '../auth/oauth.js';
@@ -16,6 +16,7 @@ import type { GameRef, PlayRecord, ProfileRecord, RatingRecord } from '../record
 /** A play or rating record value seen through the entry-permalink lens (fields from either). */
 type EntryValue = Partial<PlayRecord> & Partial<RatingRecord> & { game: GameRef };
 import { appviewClient, getCommentThread, getProfile, getProfiles, type BskyProfile } from '../read/bsky.js';
+import { atmospherePostUrl } from '../share/atmosphere-url.js';
 import {
   gameDistinctPlayers,
   gamePlays,
@@ -150,7 +151,7 @@ export function dashboard(ctx: PageCtx): void {
           feedEl,
           emptyState({
             title: 'No games on the table yet',
-            body: 'Log your first play to get the dice rolling. Share it, and your friends on Bluesky can follow along.',
+            body: 'Log your first play to get the dice rolling. Share it, and your friends on the Atmosphere can follow along.',
           }),
         );
         return;
@@ -559,7 +560,7 @@ function entryView(
   `;
 }
 
-/** Comments = the companion post's Bluesky reply thread, read-only (D-40 move 5). */
+/** Comments = the companion post's reply thread on the Atmosphere, read-only (D-40 move 5). */
 async function loadComments(root: Element, value: EntryValue): Promise<void> {
   const ref = value.bskyPostRef;
   const slot = root.querySelector('#comments');
@@ -569,7 +570,7 @@ async function loadComments(root: Element, value: EntryValue): Promise<void> {
   render(
     slot,
     html`
-      <h2 class="section">From Bluesky</h2>
+      <h2 class="section">From the Atmosphere</h2>
       <p class="mono muted small">${thread.likeCount} likes · ${thread.replyCount} replies</p>
       ${thread.comments.map(
         (c) => html`<div class="comment">
@@ -577,7 +578,7 @@ async function loadComments(root: Element, value: EntryValue): Promise<void> {
           <p>${c.text}</p>
         </div>`,
       )}
-      <a class="mono small" href="https://bsky.app/profile/${value.bskyPostRef!.uri.split('/')[2]}" target="_blank" rel="noopener noreferrer">Reply on Bluesky</a>
+      <a class="mono small" href="${atmospherePostUrl(ref.uri)}" target="_blank" rel="noopener noreferrer">Reply on the Atmosphere</a>
     `,
   );
 }
@@ -710,7 +711,7 @@ export function about(ctx: PageCtx): void {
         <h1>About rolld</h1>
         <p>
           rolld is a log of the board games you play, and how you rate them. It's built on
-          atproto, the same open network Bluesky runs on, so the games you log live as records on
+          atproto, the open network behind the Atmosphere, so the games you log live as records on
           your own account, not in a database I keep.
         </p>
         <h2>Your data is yours</h2>
@@ -728,8 +729,8 @@ export function about(ctx: PageCtx): void {
         </p>
         <h2>Social when your people arrive</h2>
         <p>
-          Your plays are public records, so your friends on Bluesky can follow along, and you can
-          see what they're playing. Until they show up, the log is worth keeping on its own.
+          Your plays are public records, so your friends on the Atmosphere can follow along, and you
+          can see what they're playing. Until they show up, the log is worth keeping on its own.
         </p>
         <p class="mono muted">
           Game data from BoardGameGeek. Built by
@@ -782,7 +783,7 @@ const POLICIES: Record<string, { title: string; body: SafeHtml }> = {
     body: html`
       <p>
         rolld doesn't run a database of your activity. Your plays and ratings live on your own
-        atproto account and are public records by design, the same way a Bluesky post is.
+        atproto account and are public records by design, the same way a post on the Atmosphere is.
       </p>
       <p>
         Game details are fetched and cached from BoardGameGeek. There's no tracking and no ads.

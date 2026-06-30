@@ -170,7 +170,7 @@ export function openLogFlow(ctx: PageCtx, prefill?: GameRef): void {
           <textarea id="note" name="note" class="text-input mono" rows="4" placeholder="how did it go?"></textarea>
         </details>
 
-        <label class="share-toggle mono"><input type="checkbox" id="share" /> Share on Bluesky</label>
+        <label class="share-toggle mono"><input type="checkbox" id="share" /> Share on the Atmosphere</label>
         <button type="submit" class="pixel-btn is-active submit-cta">Log play</button>
         <p class="mono small muted" id="log-status"></p>
       </form>
@@ -308,7 +308,7 @@ export function openRateFlow(ctx: PageCtx, prefill?: GameRef): void {
         </div>
         <label class="mono" for="review">Review (optional)</label>
         <textarea id="review" class="text-input mono" rows="4" placeholder="what did you think?"></textarea>
-        <label class="share-toggle mono"><input type="checkbox" id="share" /> Share on Bluesky</label>
+        <label class="share-toggle mono"><input type="checkbox" id="share" /> Share on the Atmosphere</label>
         <button type="submit" class="pixel-btn is-active submit-cta">Save grade</button>
         <p class="mono small muted" id="rate-status"></p>
       </form>
@@ -368,7 +368,7 @@ export function openRateFlow(ctx: PageCtx, prefill?: GameRef): void {
   });
 }
 
-/* ---- CC-3: share-to-Bluesky modal -------------------------------------------- */
+/* ---- CC-3: share-to-the-Atmosphere modal ------------------------------------- */
 
 interface ShareInput {
   verb: 'Played' | 'Rated';
@@ -383,11 +383,11 @@ export function openShareModal(ctx: PageCtx, input: ShareInput): void {
   if (!session) return;
   const draft = defaultShareText(input);
   const sheet = openSheet(
-    'Share on Bluesky',
+    'Share on the Atmosphere',
     html`
       <textarea id="share-text" class="text-input mono" rows="4">${draft}</textarea>
       <p class="mono small" id="count"></p>
-      <button id="share-post" class="pixel-btn is-active">Post to Bluesky</button>
+      <button id="share-post" class="pixel-btn is-active">Post to the Atmosphere</button>
       <p class="mono small muted" id="share-status"></p>
     `,
   );
@@ -405,7 +405,7 @@ export function openShareModal(ctx: PageCtx, input: ShareInput): void {
   const post = sheet.body.querySelector<HTMLButtonElement>('#share-post')!;
   post.addEventListener('click', () => {
     if (graphemesRemaining(textarea.value) < 0) {
-      status.textContent = 'A little too long for Bluesky — trim it down.';
+      status.textContent = 'A little too long for the Atmosphere — trim it down.';
       return;
     }
     post.disabled = true;
