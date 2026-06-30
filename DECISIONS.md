@@ -628,6 +628,44 @@ real contradiction between two sources of truth, and Phase 2 shouldn't rediscove
 **The lean:** match atmot's actual choice (atcute) unless Phase 2 finds a concrete reason not
 to, since "do what the working reference does" beats "do what an older doc said." **Cost:** one
 doc (`stack.md`) is now slightly ahead of reality; Phase 2 reconciles it for good.
+**Resolved (D-46):** Phase 2 picked atcute. Found no reason not to.
+
+### D-46 — atcute is the client library; OAuth redirects to `/oauth/callback`.
+Resolves D-45. Phase 2 builds on the `@atcute/*` family — `@atcute/oauth-browser-client`
+(4.0.1) for the browser PKCE+DPoP flow, `@atcute/client` (5.1.1) for XRPC, plus
+`@atcute/identity-resolver` and the `@atcute/atproto` / `@atcute/bluesky` definition packages.
+**Why:** it's what the proven atmot template actually ships; the API was verified against the
+live packages, and the flow (configure → createAuthorizationUrl → finalizeAuthorization →
+OAuthUserAgent → Client) is clean and matches the docs. **Also fixed:** the OAuth redirect is
+`https://rolld.at/oauth/callback` (was a bare `/` stub), and the callback reads its result from
+the URL *hash*, not the query string (atcute's flow). **Cost:** `stack.md` named `@atproto/*`;
+it is now superseded by reality — atcute is the dependency.
+
+### D-47 — Ship `transition:generic` for v1; granular least-privilege scopes are the migration target.
+Phase 2 requests `atproto transition:generic`, NOT the per-collection granular scopes
+(`repo:at.rolld.play?action=create&action=delete`, …) the earlier docs sketched. **Context:**
+granular OAuth scopes (atproto proposal 0011) are real and rolling out, but the proposal itself
+says the *"scope string syntax … [is] likely to change"*, the final spec isn't published, and
+`@atcute/oauth-browser-client`'s own README still ships `transition:generic`. **Decision:** use
+the transitional coarse scope, which covers every write rolld needs — all `at.rolld.*` records,
+`app.bsky.feed.post`, and `uploadBlob` — in one grant that works across every PDS today.
+**Why:** least-privilege is the right end state, but shipping an unstable scope grammar at v1
+risks consent-screen breakage on some PDSes for a privacy nicety users won't see. The granular
+array is documented in `docs/vendor-specs/live-api-reference.md` as the migration target, gated
+behind the spec freezing and atcute exposing it. **Cost accepted:** rolld asks for broader
+access than it strictly uses in v1 — an honest tradeoff, reversible without a record or URL
+change (it's a scope string + a metadata edit, no data migration). Supersedes the granular
+scope strings sketched in `stack.md` / Phase 2 for v1.
+
+### D-48 — markpub notes use a nested `text.markdown`; re-confirm before cross-app interop.
+The note `content` union member (D-11) is written as
+`{ $type: 'at.markpub.markdown', text: { markdown }, flavor: 'gfm' }` — the raw Markdown lives in
+a nested `at.markpub.text` object, per the live markpub schema (read off markpub.at; could not be
+network-resolved as a published lexicon). **Why record it:** the earlier docs implied the
+Markdown sat directly on the markpub member; the real shape nests it. rolld controls its own
+`textContent` fallback (D-11) regardless, so a wrong guess degrades gracefully — but any code
+that *relies* on markpub interop should re-confirm the `$type`/required fields against a live
+record first. **Cost:** a small residual uncertainty isolated to one builder.
 
 ---
 
