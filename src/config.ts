@@ -3,8 +3,8 @@
  *
  * Values here that are baked into shipped data can never change without breaking
  * history (the domain, the lexicon namespace). The frozen `/g/<bggId>` target
- * helper that Constellation indexes literally is owned by Phase 2 (the write
- * path) — it is deliberately NOT here yet. See DECISIONS.md.
+ * helper that Constellation indexes literally is owned by the write path — it is
+ * deliberately NOT here yet. See DECISIONS.md.
  */
 
 /** Canonical, permanent host. The reverse-DNS of this is the lexicon namespace. */
@@ -36,7 +36,7 @@ export const ABUSE_EMAIL = 'abuse@rolld.at';
  */
 export const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
-/** Constellation (microcosm) public backlink index — the read seam (Phase 3). */
+/** Constellation (microcosm) public backlink index — the read seam. */
 export const CONSTELLATION_BASE = 'https://constellation.microcosm.blue';
 
 /** Slingshot — fast record + verified-identity reads (D-23, D-26). */

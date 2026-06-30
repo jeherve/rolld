@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-publish gate for the at.rolld.* lexicons (Phase 5, D-37). Runs every check
+# Pre-publish gate for the at.rolld.* lexicons (D-37). Runs every check
 # that does NOT touch the network or commit anything, so the schemas are proven
 # valid before the maintainer does the DNS edit + publish. Run from the repo root.
 set -euo pipefail

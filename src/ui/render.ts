@@ -1,5 +1,5 @@
 /**
- * Small reusable view pieces (Phase 4) — avatars, game covers, grade badges, the
+ * Small reusable view pieces — avatars, game covers, grade badges, the
  * report link, and the async-region helper every data page uses. They return
  * `SafeHtml` (escape-by-default) so pages compose them without thinking about XSS.
  * BGG covers fall back to the game's name snapshot immediately (D-32/CC-5): a row

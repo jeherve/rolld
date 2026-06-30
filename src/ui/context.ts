@@ -1,5 +1,5 @@
 /**
- * The app context passed to every view (Phase 4). Views are render-from-state
+ * The app context passed to every view. Views are render-from-state
  * functions: given the context (the signed-in session, a way to navigate, the live
  * `<main>` mount) and their route params, they paint into `main` — synchronously
  * for the chrome, then asynchronously as data arrives (CC-5).

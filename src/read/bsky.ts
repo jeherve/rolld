@@ -1,5 +1,5 @@
 /**
- * Public Bluesky reads (Phase 3) via the unauthenticated AppView. rolld reuses
+ * Public Bluesky reads via the unauthenticated AppView. rolld reuses
  * Bluesky's existing profile data (D-28) — a public profile page is just a
  * different lens on `app.bsky.actor.profile` plus rolld records, with zero new
  * profile data to store. The follows graph drives the friends-feed (D-26), and a

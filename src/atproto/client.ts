@@ -1,11 +1,11 @@
 /**
- * A thin, typed facade over `@atcute/client` for the repo operations rolld needs
- * (Phase 2). It keeps the atcute generics and the `repo`/`collection` plumbing in
+ * A thin, typed facade over `@atcute/client` for the repo operations rolld needs.
+ * It keeps the atcute generics and the `repo`/`collection` plumbing in
  * one place so the rest of the app writes records without touching XRPC details.
  *
  * Constructed from an authenticated `Client` (an `OAuthUserAgent` handler) plus the
  * signed-in DID. Read-only public reads (other users' repos) can use a `Client`
- * built with `simpleFetchHandler` — see `reads` in Phase 3.
+ * built with `simpleFetchHandler` — see the public read modules.
  */
 import './register.js';
 import { type Client, ok } from '@atcute/client';

@@ -1,5 +1,5 @@
 /**
- * Spacedust live tail (D-26, Phase 4 step 4 — the enhancement layer, added last).
+ * Spacedust live tail (D-26 — the enhancement layer, added last).
  * Once the dashboard's history has loaded (Slingshot), open a Spacedust websocket
  * subscribed to the play link-source, filtered to the user's followed DIDs, and
  * prepend arriving plays. `instant` is left OFF so Spacedust's 21s buffer drops

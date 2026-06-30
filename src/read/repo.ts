@@ -1,5 +1,5 @@
 /**
- * Repo reads (Phase 3). "My data" — my plays, my ratings — comes straight from the
+ * Repo reads. "My data" — my plays, my ratings — comes straight from the
  * user's OWN PDS via `listRecords`, no Constellation and no server (which is why
  * the personal dashboard keeps working even when Constellation is down). The same
  * `listRecords` reads any *public* repo for profile/play-log pages — Slingshot has

@@ -6,7 +6,7 @@
  * search/previews (the same discipline standard.site applies).
  *
  * This is the lightweight strip-formatting pass. The full Markdown → *sanitized
- * HTML* renderer (D-20) is a Phase 3 concern (the read/display side); this pure
+ * HTML* renderer (D-20) is a read/display-side concern; this pure
  * reduction is all the write path needs. Unit-tested.
  */
 

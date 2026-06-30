@@ -1,5 +1,5 @@
 /**
- * BGG XML → typed data (Phase 1). Pure functions, no network, no Worker APIs —
+ * BGG XML → typed data. Pure functions, no network, no Worker APIs —
  * so they unit-test thoroughly against recorded fixtures (the build philosophy:
  * test the pure logic hard, mock the network at the boundary).
  *
@@ -9,7 +9,7 @@
  *
  * The `<statistics>` nesting (`<statistics><ratings><averageweight>` /
  * `<bayesaverage>`) and the entity-encoded `<description>` are the two things the
- * Phase-1 doc flags to get right; both are exercised by the fixtures.
+ * docs flag to get right; both are exercised by the fixtures.
  */
 import { XMLParser } from 'fast-xml-parser';
 import type { GameMetadata, SearchCandidate } from './types.js';

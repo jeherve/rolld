@@ -1,5 +1,5 @@
 /**
- * The feed card (Phase 4) — one logged play as seen in a feed or play log. Shows
+ * The feed card — one logged play as seen in a feed or play log. Shows
  * who played, the game, when, who else was there, a note snippet, and any photos.
  * Tapping it opens the entry permalink. The whole card is built from data the
  * caller already has (the play record + a resolved author + optional hydrated game
