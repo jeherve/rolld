@@ -38,3 +38,30 @@ export function json(
 export function errorJson(request: Request, status: number, code: string, message: string): Response {
   return json(request, { error: code, message }, { status });
 }
+
+/**
+ * Validate an upstream endpoint we resolved from ATTACKER-CONTROLLED data before
+ * fetching it. A user picks their own PDS, and a `did:web` (or a did:plc with a
+ * self-chosen serviceEndpoint) can point that endpoint anywhere — so the raw `pds`
+ * string from a MiniDoc is untrusted. Without this guard the Worker is an SSRF
+ * proxy: a request for `/api/blob/<attacker-did>/<cid>` would make Cloudflare's
+ * edge fetch `https://169.254.169.254/…` or an internal host and stream the body
+ * back. We require https, a real dotted public hostname, and reject IP-literal /
+ * localhost / single-label hosts. Returns the bare origin (dropping any path or
+ * query the attacker tucked into the endpoint), or null if it's not safe to fetch.
+ */
+export function safeUpstreamOrigin(raw: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== 'https:') return null;
+  const host = u.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost')) return null;
+  if (!host.includes('.')) return null; // single-label internal names
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return null; // IPv4 literal (incl. the metadata IP)
+  if (host.includes(':') || raw.includes('[')) return null; // IPv6 literal
+  return u.origin;
+}

@@ -6,6 +6,7 @@
  * since readers poll. Worker-local (no browser imports) so it stays in the Worker's
  * dependency-free build.
  */
+import { safeUpstreamOrigin } from './http.js';
 import { type Blocklist, isBlockedDid, isBlockedUri } from './moderation.js';
 import { buildRss, type RssItem } from './rss.js';
 
@@ -24,8 +25,11 @@ async function resolveUser(identifier: string): Promise<ResolvedUser | null> {
   );
   if (!res.ok) return null;
   const d = (await res.json()) as { did?: string; handle?: string; pds?: string };
-  if (!d.did || !d.handle || !d.pds) return null;
-  return { did: d.did, handle: d.handle, pds: d.pds };
+  // The PDS endpoint is attacker-controllable (the user picks it); validate it so
+  // the feed reader can't be turned into an SSRF proxy either (Sec#1).
+  const pds = d.pds ? safeUpstreamOrigin(d.pds) : null;
+  if (!d.did || !d.handle || !pds) return null;
+  return { did: d.did, handle: d.handle, pds };
 }
 
 interface RawRecord {
