@@ -1,0 +1,23 @@
+# rolld Worker — the BGG gateway + cache (D-3, D-31). The only server-side
+# component in rolld. Deployed separately from the Pages SPA (the git remote is on
+# Tangled, so Cloudflare git-builds aren't available; deploy is `wrangler deploy`).
+
+name = "rolld-worker"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+workers_dev = true
+
+# Production route: serve under the app origin so the SPA calls same-origin /api/*.
+# Maintainer enables this once the rolld.at zone is on Cloudflare:
+# routes = [{ pattern = "rolld.at/api/*", zone_name = "rolld.at" }]
+
+# KV cache: `bgg:<id>` (permanent game metadata) + `search:<q>` (short-TTL queries).
+# Phase 3 adds `cx:<target>` (Constellation) + the moderation blocklist here too.
+# Create the namespace, then paste its id below:
+#   wrangler kv namespace create BGG_CACHE
+[[kv_namespaces]]
+binding = "BGG_CACHE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# The BGG bearer token is a SECRET, never in this file or the repo (D-31):
+#   wrangler secret put BGG_TOKEN

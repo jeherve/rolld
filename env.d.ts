@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_OAUTH_REDIRECT_URI: string;
   /** OAuth scope string. Wired in Phase 2. */
   readonly VITE_OAUTH_SCOPE: string;
+  /** Override the rolld Worker base URL in dev (e.g. a local `wrangler dev`). Optional. */
+  readonly VITE_API_BASE?: string;
 }
 
 interface ImportMeta {

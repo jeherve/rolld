@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<items termsofuse="https://boardgamegeek.com/xmlapi/termsofuse">
+  <item type="boardgame" id="174430">
+    <thumbnail>https://cf.geekdo-images.com/sZYp_3BTDGjh2unaZfZmuA__thumb/img/gloomhaven.jpg</thumbnail>
+    <image>https://cf.geekdo-images.com/sZYp_3BTDGjh2unaZfZmuA__original/img/gloomhaven.jpg</image>
+    <name type="primary" sortindex="1" value="Gloomhaven"/>
+    <name type="alternate" sortindex="1" value="Gloomhaven: Zmога"/>
+    <description>Gloomhaven  is a game of Euro-inspired tactical combat in a persistent world of shifting motives.&#10;&#10;Players will take on the role of a wandering adventurer with their own special set of skills &amp;amp; reasons for traveling to this dark corner of the world. Players must work together out of necessity to clear out menacing dungeons &amp;amp; forgotten ruins. In the process, they will enhance their abilities with experience &amp;amp; loot, discover new locations to explore &amp;amp; plunder, &amp;amp; expand an ever-branching story fueled by the decisions they make.&#10;&#10;This is a game with a persistent &amp;amp; changing world that is ideally played over many game sessions. It&amp;rsquo;s a real campaign&amp;mdash;don&amp;rsquo;t miss it.</description>
+    <yearpublished value="2017"/>
+    <minplayers value="1"/>
+    <maxplayers value="4"/>
+    <playingtime value="120"/>
+    <minplaytime value="60"/>
+    <maxplaytime value="120"/>
+    <minage value="14"/>
+    <link type="boardgamecategory" id="1022" value="Adventure"/>
+    <link type="boardgamecategory" id="1020" value="Exploration"/>
+    <link type="boardgamecategory" id="1010" value="Fantasy"/>
+    <link type="boardgamemechanic" id="2689" value="Action Queue"/>
+    <link type="boardgamemechanic" id="2839" value="Campaign / Battle Card Driven"/>
+    <link type="boardgamemechanic" id="2018" value="Cooperative Game"/>
+    <link type="boardgamedesigner" id="69802" value="Isaac Childres"/>
+    <link type="boardgamepublisher" id="34188" value="Cephalofair Games"/>
+    <statistics page="1">
+      <ratings>
+        <usersrated value="55432"/>
+        <average value="8.74186"/>
+        <bayesaverage value="8.51012"/>
+        <ranks>
+          <rank type="subtype" id="1" name="boardgame" friendlyname="Board Game Rank" value="1" bayesaverage="8.51012"/>
+          <rank type="family" id="5496" name="thematic" friendlyname="Thematic Rank" value="1" bayesaverage="8.55"/>
+        </ranks>
+        <stddev value="1.59"/>
+        <median value="0"/>
+        <owned value="89234"/>
+        <averageweight value="3.8616"/>
+      </ratings>
+    </statistics>
+  </item>
+</items>
