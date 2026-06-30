@@ -6,8 +6,15 @@
  * serialization — the Worker route does the reads and caches the result in KV.
  */
 
+// XML 1.0 forbids most C0 control characters outright (only tab, LF and CR are
+// legal). A note carrying e.g. a form-feed would otherwise pass through verbatim
+// and make the WHOLE feed document ill-formed — every subscriber's reader fails to
+// parse it, not just the offending item. Strip the illegal ones before escaping.
+const ILLEGAL_XML = /[\x00-\x08\x0B\x0C\x0E-\x1F]/g;
+
 function xmlEscape(text: string): string {
   return text
+    .replace(ILLEGAL_XML, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -15,9 +22,14 @@ function xmlEscape(text: string): string {
     .replace(/'/g, '&apos;');
 }
 
-/** ISO 8601 → RFC 822 date (what RSS `pubDate` wants). Deterministic for a given input. */
+/**
+ * ISO 8601 → RFC 822 date (what RSS `pubDate` wants). Deterministic for a given
+ * input. Returns '' for an unparseable date so the caller can omit `<pubDate>`
+ * rather than emit a literal "Invalid Date" (which breaks the feed).
+ */
 export function toRfc822(iso: string): string {
-  return new Date(iso).toUTCString();
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : date.toUTCString();
 }
 
 export interface RssItem {
@@ -45,11 +57,12 @@ export function buildRss(channel: RssChannel): string {
       const desc = item.description
         ? `\n      <description>${xmlEscape(item.description)}</description>`
         : '';
+      const rfc822 = toRfc822(item.isoDate);
+      const pubDate = rfc822 ? `\n      <pubDate>${rfc822}</pubDate>` : '';
       return `    <item>
       <title>${xmlEscape(item.title)}</title>
       <link>${xmlEscape(item.link)}</link>
-      <guid isPermaLink="false">${xmlEscape(item.guid)}</guid>
-      <pubDate>${toRfc822(item.isoDate)}</pubDate>${desc}
+      <guid isPermaLink="false">${xmlEscape(item.guid)}</guid>${pubDate}${desc}
     </item>`;
     })
     .join('\n');

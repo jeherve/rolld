@@ -47,6 +47,43 @@ describe('RSS serialization (D-42)', () => {
     expect(xml).toContain('<pubDate>Tue, 30 Jun 2026 12:00:00 GMT</pubDate>');
     expect(xml).toContain('rel="self"');
   });
+
+  // Regression: a record with no usable date fell back to '' upstream, and
+  // toRfc822('') emitted a literal "Invalid Date", making the whole feed ill-formed.
+  it('omits pubDate for an unparseable date rather than emitting "Invalid Date"', () => {
+    expect(toRfc822('')).toBe('');
+    expect(toRfc822('not-a-date')).toBe('');
+    const xml = buildRss({
+      title: 't',
+      link: 'https://rolld.at/@me',
+      description: 'd',
+      items: [{ title: 'x', link: 'https://l', guid: 'g', isoDate: '' }],
+    });
+    expect(xml).not.toContain('Invalid Date');
+    expect(xml).not.toContain('<pubDate>');
+  });
+
+  // Regression: C0 control chars are illegal in XML 1.0 and would break parsing of
+  // the entire document for every subscriber.
+  it('strips illegal XML control characters from user text', () => {
+    const xml = buildRss({
+      title: 'me',
+      link: 'https://rolld.at/@me',
+      description: 'd',
+      items: [
+        {
+          title: 'title\x0Cwith\x07controls',
+          link: 'https://l',
+          guid: 'g',
+          isoDate: '2026-06-30T12:00:00Z',
+          description: 'body\x0Cwith\x1Fcontrols',
+        },
+      ],
+    });
+    expect(xml).not.toMatch(/[\x00-\x08\x0B\x0C\x0E-\x1F]/);
+    expect(xml).toContain('<title>titlewithcontrols</title>');
+    expect(xml).toContain('<description>bodywithcontrols</description>');
+  });
 });
 
 describe('moderation blocklist (D-41)', () => {
