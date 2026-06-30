@@ -1,8 +1,8 @@
-# Publishing the `at.rolld.*` lexicons — runbook (Phase 5, D-37)
+# Publishing the `at.rolld.*` lexicons — runbook (D-37)
 
 > **Gated to v1 launch.** Publishing turns the schema into a public standard others
 > build on, and once published the frozen-constraints rules (D-8) bind hard. So this
-> runs *after* the app has exercised the schema in real use (Phases 1–4), at launch.
+> runs *after* the app has exercised the schema in real use, at launch.
 >
 > Everything an agent can prepare is done. The two steps that are **the maintainer's
 > call** are marked 🔒 — the `_lexicon` DNS edit and the final publish. Do not run
@@ -100,7 +100,7 @@ change is a new NSID (`…play` → a v2 NSID). Run `goat lex breaking lexicons/
 before ever re-publishing an edited schema — it now has a published baseline to
 diff against and will catch an accidental breaking change before it ships.
 
-## Definition of done (Phase 5)
+## Definition of done
 
 - [x] All four schemas parse + validate (`scripts/check-lexicons.sh`).
 - [x] Publish commands + verification steps prepared (this file).

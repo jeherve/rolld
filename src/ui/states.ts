@@ -5,7 +5,7 @@ import { html, type SafeHtml } from './html.js';
  * table waiting for players — applied to the waits and the edges, never to the
  * working surface of a form. These are first-pass stubs: the structure, the
  * copy, and the `prefers-reduced-motion` fallback are here; the finished pixel
- * art lands with Phase 4. Motion is gated in theme.css — the loader settles to a
+ * art lands later. Motion is gated in theme.css — the loader settles to a
  * still die when reduced motion is asked for.
  */
 
@@ -20,7 +20,7 @@ export function diceLoader(label = 'Rolling…'): SafeHtml {
 }
 
 export interface EmptyStateOpts {
-  /** A tabletop motif (placeholder emoji for now; pixel art in Phase 4). */
+  /** A tabletop motif (placeholder emoji for now; pixel art later). */
   motif?: string;
   title?: string;
   body?: string;

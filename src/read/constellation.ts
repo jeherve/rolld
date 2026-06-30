@@ -1,5 +1,5 @@
 /**
- * Constellation reads (Phase 3, D-1). Per-game social/aggregate questions are
+ * Constellation reads (D-1). Per-game social/aggregate questions are
  * answered by querying the public Constellation backlink index for records that
  * link to a game's canonical `target` URL — NOT by running our own indexer. "All
  * plays of game X" is "all records linking to `rolld.at/g/<bggId>`".

@@ -7,6 +7,13 @@ import { tangledMark } from './icons.js';
  * an About link into rolld's own story, the author's pixel face (→ the author),
  * and the Tangled mark (→ this repo). The face and Tangled mark are family assets,
  * copied verbatim and never restyled into the rose theme.
+ *
+ * The two marks are loaded differently on purpose (D-52). The Tangled mark is a
+ * single-colour glyph inlined from `icons.ts` so it can pick up `currentColor` and tint
+ * with the footer chrome — an <img> can't do that. The face is a full-colour pixel
+ * portrait that must NOT be tinted and is a heavy asset, so it's served as a static
+ * `/jeremy-herve.svg` (kept out of the JS bundle, cached on its own) and lazy-loaded,
+ * since the footer sits below the fold.
  */
 export function renderFooter(): SafeHtml {
   return html`
@@ -22,7 +29,15 @@ export function renderFooter(): SafeHtml {
         title="Jeremy Herve"
         aria-label="The author, Jeremy Herve"
       >
-        <img class="avatar" src="/jeremy-herve.svg" alt="" width="20" height="20" />
+        <img
+          class="avatar"
+          src="/jeremy-herve.svg"
+          alt=""
+          width="20"
+          height="20"
+          loading="lazy"
+          decoding="async"
+        />
       </a>
       <a
         class="iconlink"

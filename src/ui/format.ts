@@ -1,5 +1,5 @@
 /**
- * Pure display formatters for the UI (Phase 4). Kept out of the view functions so
+ * Pure display formatters for the UI. Kept out of the view functions so
  * the fiddly bits — relative time, player summaries, grades — are unit-tested and
  * the views stay about layout. The voice is plain and direct (design-system): "with
  * Alice and Bob", "solo", "8/10".

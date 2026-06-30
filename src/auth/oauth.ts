@@ -1,5 +1,5 @@
 /**
- * Browser atproto OAuth (Phase 2), via `@atcute/oauth-browser-client`. rolld is a
+ * Browser atproto OAuth via `@atcute/oauth-browser-client`. rolld is a
  * static SPA, so auth runs entirely client-side — no server session (matches atmot).
  *
  * The flow: `initOAuth()` once at startup → `beginLogin(handle)` redirects to the

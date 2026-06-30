@@ -1,6 +1,6 @@
 /**
- * Pure builders that turn UI input into lexicon-valid `at.rolld.*` record values
- * (Phase 2). They are the single place the canonical `target` is attached (via the
+ * Pure builders that turn UI input into lexicon-valid `at.rolld.*` record values.
+ * They are the single place the canonical `target` is attached (via the
  * shared `gameTargetUrl` helper, D-9) and the only place the note model is
  * assembled (markpub `content` + plain `textContent`, D-11). No network, no
  * atcute — so they unit-test against exact expected shapes.
@@ -99,7 +99,7 @@ export interface RatingInput {
 
 /**
  * Build an `at.rolld.rating` record value plus its rkey (= the BGG id), so
- * re-rating the same game overwrites in place rather than duplicating (D-9, Phase 2).
+ * re-rating the same game overwrites in place rather than duplicating (D-9).
  */
 export function buildRatingRecord(input: RatingInput): { rkey: string; record: RatingRecord } {
   const record: RatingRecord = {

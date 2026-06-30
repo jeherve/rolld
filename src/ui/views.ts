@@ -1,5 +1,5 @@
 /**
- * The pages (Phase 4). Each is a render-from-state function: paint the chrome and a
+ * The pages. Each is a render-from-state function: paint the chrome and a
  * loading state at once, then fetch and repaint as data arrives (CC-5). Public read
  * pages (game, profile, entry) need no sign-in and render well logged-out, since
  * they're where shared Atmosphere links land (D-40). Copy is in the maintainer's plain,

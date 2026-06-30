@@ -1,5 +1,5 @@
 /**
- * Lexicon validation (Phase 5). Before the `at.rolld.*` schemas are published as a
+ * Lexicon validation. Before the `at.rolld.*` schemas are published as a
  * public standard (D-37), they must be internally consistent: well-formed, ids
  * matching their filenames, and every cross-reference resolving. Publishing is a
  * commitment (the frozen-constraints rules, D-8, bind hard afterwards), so this is

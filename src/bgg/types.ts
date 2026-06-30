@@ -1,5 +1,5 @@
 /**
- * Catalog hydration types (Phase 1).
+ * Catalog hydration types.
  *
  * `GameMetadata` is the live, display-time enrichment for a game — name, cover,
  * weight, community rating. It is NEVER stored in a record (D-5): records carry

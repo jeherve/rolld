@@ -6,7 +6,7 @@ BoardGameGeek (D-31): it holds the `BGG_TOKEN` secret, injects the
 touched only on the first-ever sight of a game across the whole instance. The
 browser calls this Worker; it never calls BGG and never sees the token.
 
-## Routes (Phase 1)
+## Routes
 
 | Route | Purpose |
 |---|---|
@@ -15,8 +15,8 @@ browser calls this Worker; it never calls BGG and never sees the token.
 | `GET /api/search?q=<query>` | Name → candidates. Short-TTL cache (`search:<q>`, 1h). |
 | `GET /api/health` | Liveness. |
 
-Phase 3 extends this Worker with the per-user RSS feed (D-42), Constellation
-response caching (`cx:<target>`), and the moderation blocklist enforcement (D-41).
+The Worker also serves the per-user RSS feed (D-42), caches Constellation
+responses (`cx:<target>`), and enforces the moderation blocklist (D-41).
 
 ## Setup (maintainer)
 

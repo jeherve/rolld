@@ -10,7 +10,7 @@
  *
  * The follow set is CAPPED (D-26) to bound cost; per-follow failures degrade to
  * "skip that follow", never break the feed. Spacedust live prepend is layered on
- * top in Phase 4 (the enhancement, added last).
+ * top later (the enhancement, added last).
  */
 import { Client } from '@atcute/client';
 import { COLLECTION, PROFILE_RKEY } from '../config.js';

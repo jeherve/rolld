@@ -1,5 +1,5 @@
 /**
- * Lexicon-shape validation (Phase 2, test-hard). A lightweight guard that mirrors
+ * Lexicon-shape validation (test-hard). A lightweight guard that mirrors
  * the constraints in `lexicons/at/rolld/*.json`, run before any write so a
  * malformed record never reaches the PDS. It is NOT a full lexicon engine — it
  * checks exactly the constraints rolld depends on, including the one that matters

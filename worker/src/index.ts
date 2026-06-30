@@ -7,10 +7,10 @@
  * instance. The browser calls this Worker; it never calls BGG and never sees the
  * token.
  *
- * Phase 1 routes (this file): game metadata, batch hydrate, and game search.
- * Phase 3 extends it with the per-user RSS feed (D-42), Constellation response
- * caching, and the moderation blocklist enforcement (D-41) — all consistent with
- * the Worker's "stateless code, KV holds the tiny state" shape.
+ * Core routes (this file): game metadata, batch hydrate, and game search. It also
+ * serves the per-user RSS feed (D-42), caches Constellation responses, and enforces
+ * the moderation blocklist (D-41) — all consistent with the Worker's "stateless
+ * code, KV holds the tiny state" shape.
  */
 import { parseSearch, parseThing, parseThings } from '../../src/bgg/parse.js';
 import type { GameMetadata, SearchCandidate } from '../../src/bgg/types.js';

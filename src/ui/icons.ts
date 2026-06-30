@@ -3,6 +3,10 @@
  * the author's other projects (atmot / skypress); it is NOT a rolld brand asset
  * and must not be restyled into the rose theme. It fills with `currentColor` so it
  * tints with the rest of the footer chrome. Source: https://tangled.org/brand.
+ *
+ * Single-colour marks that need to tint live here, inlined, for `currentColor` (D-52).
+ * The author's full-colour pixel face does NOT — it stays a static `/jeremy-herve.svg`
+ * (full colour, heavy, no tinting), referenced as an <img> from the footer.
  */
 import { raw, type SafeHtml } from './html.js';
 

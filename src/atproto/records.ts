@@ -1,5 +1,5 @@
 /**
- * High-level write operations (Phase 2) — the bridge from UI intent to the PDS.
+ * High-level write operations — the bridge from UI intent to the PDS.
  * Each composes the pure builder (shape + frozen target), the shape validator (the
  * last guard before a write), and the `RolldAgent` (the XRPC call). Every first
  * write also ensures the `profile` participation declaration exists (D-25), so a

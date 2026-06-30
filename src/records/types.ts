@@ -1,5 +1,5 @@
 /**
- * TypeScript mirrors of the `at.rolld.*` lexicons (Phase 0). These are the record
+ * TypeScript mirrors of the `at.rolld.*` lexicons. These are the record
  * shapes the write path produces and the read path consumes. They intentionally
  * carry ONLY the user's own data (D-5): no catalog metadata, no derived counts.
  *
