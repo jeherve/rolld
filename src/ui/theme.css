@@ -833,3 +833,6 @@ label.mono {
     animation: none !important;
   }
 }
+
+.live-new .feed-card { border-color: var(--accent-2); }
+.live-new .feed-card::before { content: "new"; display: inline-block; background: var(--accent-2); color: var(--bg); font-family: var(--font-mono); font-size: 0.65rem; padding: 0 0.3rem; margin-bottom: 0.3rem; }

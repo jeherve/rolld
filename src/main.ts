@@ -16,7 +16,10 @@ const ctx: PageCtx = {
   get main() {
     return main;
   },
-  navigate: (path) => router.navigate(path),
+  navigate: (path) => {
+    views.closeLiveTail();
+    router.navigate(path);
+  },
   replace: (path) => {
     history.replaceState(null, '', path);
   },

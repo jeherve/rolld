@@ -26,6 +26,7 @@ import { buildFriendsFeed } from '../read/friends.js';
 import { resolveMiniDoc } from '../read/identity.js';
 import { renderMarkdown } from '../read/markdown-render.js';
 import { getRecordValue, listPlays, listRatings, pdsClient } from '../read/repo.js';
+import { subscribeToPlays } from '../read/spacedust.js';
 import { mostPlayed, playSummary, timesPlayed, topRated } from '../stats/personal.js';
 import type { PageCtx } from './context.js';
 import { feedCard, type FeedAuthor } from './feedCard.js';
@@ -166,10 +167,60 @@ export function dashboard(ctx: PageCtx): void {
           }),
         )}`,
       );
+      // Live tail (D-26): prepend plays from follows as they arrive, while open.
+      const followDids = [...new Set(feed.filter((f) => !f.isOwn).map((f) => f.authorDid))];
+      startLiveTail(ctx, feedEl, followDids, new Set(feed.map((f) => f.uri)));
     } catch {
       render(feedEl, loadError());
     }
   })();
+}
+
+/** Module-level handle so navigating away from the dashboard closes the socket. */
+let liveUnsub: (() => void) | null = null;
+
+/** Close the dashboard's live tail (called on navigation away). */
+export function closeLiveTail(): void {
+  liveUnsub?.();
+  liveUnsub = null;
+}
+
+function startLiveTail(ctx: PageCtx, feedEl: HTMLElement, followDids: string[], seen: Set<string>): void {
+  liveUnsub?.();
+  if (followDids.length === 0) {
+    liveUnsub = null;
+    return;
+  }
+  liveUnsub = subscribeToPlays(followDids, (uri) => {
+    if (seen.has(uri) || !feedEl.isConnected) return;
+    seen.add(uri);
+    void prependLivePlay(ctx, feedEl, uri);
+  });
+}
+
+/** Fetch a newly-arrived play and prepend its card with a subtle "new" mark. */
+async function prependLivePlay(ctx: PageCtx, feedEl: HTMLElement, uri: string): Promise<void> {
+  void ctx;
+  const [, , did, , rkey] = uri.split('/');
+  if (!did || !rkey) return;
+  const doc = await resolveMiniDoc(did);
+  if (!doc) return;
+  const play = await getRecordValue<PlayRecord>(pdsClient(doc.pds), did, COLLECTION.play, rkey);
+  if (!play) return;
+  const [authors, metas] = await Promise.all([loadAuthors([did]), resolveGames([play.game.id])]);
+  const card = document.createElement('div');
+  card.className = 'live-new';
+  render(
+    card,
+    feedCard({
+      play,
+      rkey,
+      uri,
+      author: authors.get(did) ?? { did, handle: doc.handle },
+      meta: metas.get(play.game.id) ?? null,
+    }),
+  );
+  feedEl.prepend(card);
 }
 
 /* ---- /g/:bggId (game page) --------------------------------------------------- */
