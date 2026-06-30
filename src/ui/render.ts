@@ -8,11 +8,40 @@
 import type { GameMetadata } from '../bgg/types.js';
 import { ABUSE_EMAIL, API_BASE } from '../config.js';
 import { gamePath, profilePath } from '../links.js';
+import type { ImageEmbed } from '../records/types.js';
 import { html, render, type SafeHtml } from './html.js';
 
 /** Photo blob URL — served through the Worker so the moderation blob-refuse applies (D-41). */
 export function blobUrl(did: string, cid: string): string {
   return `${API_BASE}/api/blob/${encodeURIComponent(did)}/${encodeURIComponent(cid)}`;
+}
+
+/**
+ * Render a play's photos, defended against malformed records. Image embeds arrive
+ * from other users' PDSes (cast with no runtime check), so an embed could be
+ * missing its blob ref entirely — dereferencing `img.image.ref.$link` blindly
+ * would throw and take down the whole entry/card render. We pull the CID safely and
+ * drop any embed that lacks a usable one. `big` selects the larger entry layout.
+ */
+export function playPhotos(
+  images: ImageEmbed[] | undefined,
+  did: string,
+  big = false,
+): SafeHtml | null {
+  if (!images?.length) return null;
+  const usable = images
+    .slice(0, 4)
+    .map((img) => {
+      const cid = img.image?.ref?.$link;
+      return { cid: typeof cid === 'string' ? cid : '', alt: typeof img.alt === 'string' ? img.alt : '' };
+    })
+    .filter((p) => p.cid.length > 0);
+  if (!usable.length) return null;
+  return html`<div class="${big ? 'photos big' : 'photos'}">
+    ${usable.map(
+      (p) => html`<img class="photo" src="${blobUrl(did, p.cid)}" alt="${p.alt}" loading="lazy" />`,
+    )}
+  </div>`;
 }
 
 /** A circular-ish avatar (pixel square, per the theme), or a neutral placeholder. */

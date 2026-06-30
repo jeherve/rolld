@@ -34,7 +34,7 @@ import { countNoun, formatDate, relativeTime } from './format.js';
 import { html, raw, render, type SafeHtml } from './html.js';
 import { renderLanding } from './landing.js';
 import { openLogFlow, openRateFlow } from './flows.js';
-import { avatar, blobUrl, gameCover, gradeBadge, reportLink, sectionTitle } from './render.js';
+import { avatar, gameCover, gradeBadge, playPhotos, reportLink, sectionTitle } from './render.js';
 import { diceLoader, emptyState, errorState } from './states.js';
 
 const appview = appviewClient();
@@ -517,11 +517,18 @@ function entryView(
   meta: GameMetadata | null,
 ): SafeHtml {
   const uri = `at://${did}/${kind === 'play' ? COLLECTION.play : COLLECTION.rating}/${rkey}`;
-  const noteHtml = value.content?.text?.markdown
-    ? raw(renderMarkdown(value.content.text.markdown))
-    : value.textContent
-      ? html`<p>${value.textContent}</p>`
-      : null;
+  // Render the note via its union `$type` (D-11), not its shape: an unknown future
+  // content member falls back to the universal `textContent` instead of being
+  // mis-rendered as Markdown. The markdown itself is guarded to a string so a
+  // malformed record can't throw inside the sanitizer.
+  const markdown =
+    value.content?.$type === 'at.markpub.markdown' ? value.content.text?.markdown : undefined;
+  const noteHtml =
+    typeof markdown === 'string'
+      ? raw(renderMarkdown(markdown))
+      : value.textContent
+        ? html`<p>${value.textContent}</p>`
+        : null;
   return html`
     <article class="entry">
       <a class="entry-game" href="${gamePath(value.game.id)}" data-link>
@@ -534,9 +541,7 @@ function entryView(
           ? html` played this ${value.playedAt ? formatDate(value.playedAt) : ''}`
           : html` graded this ${value.rating ? gradeBadge(value.rating) : ''}`}
       </p>
-      ${kind === 'play' && value.images?.length
-        ? html`<div class="photos big">${value.images.map((img) => html`<img class="photo" src="${blobUrl(did, img.image.ref.$link)}" alt="${img.alt}" />`)}</div>`
-        : ''}
+      ${kind === 'play' ? playPhotos(value.images, did, true) : ''}
       ${noteHtml ? html`<div class="note">${noteHtml}</div>` : ''}
       <div class="entry-foot">
         <a class="mono small" href="${didEntryPath(did, kind, rkey)}" data-link>permanent link</a>

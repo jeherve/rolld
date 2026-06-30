@@ -122,6 +122,39 @@ describe('mergeFeed (D-26/D-27)', () => {
     expect(prependLive(feed, item('did:me', 'a', p))).toHaveLength(1);
     expect(prependLive(feed, item('did:f', 'z', play('9', '2026-07-01T00:00:00Z')))).toHaveLength(2);
   });
+
+  // Regression: records arrive from other users' PDSes with no runtime validation
+  // (repo.ts casts them blind). A follow that publishes a play with a missing or
+  // non-string timestamp must not throw and break the whole feed.
+  it('does not throw on a record missing playedAt (untrusted PDS data)', () => {
+    const broken = play('5', '2026-06-30T10:00:00Z');
+    // @ts-expect-error simulate a malformed record from another client
+    delete broken.playedAt;
+    // @ts-expect-error no createdAt either — a truly timestamp-less record
+    delete broken.createdAt;
+    const good = play('6', '2026-06-29T10:00:00Z');
+    expect(() => mergeFeed([[item('did:f', 'x', broken)], [item('did:me', 'y', good)]])).not.toThrow();
+    const merged = mergeFeed([[item('did:f', 'x', broken)], [item('did:me', 'y', good)]]);
+    // The valid record sorts ahead of the timestamp-less one (which sorts oldest).
+    expect(merged.map((m) => m.rkey)).toEqual(['y', 'x']);
+  });
+
+  it('falls back to createdAt when playedAt is absent', () => {
+    const a = play('1', '2026-06-30T10:00:00Z');
+    const b = play('2', '2026-06-30T10:00:00Z', '2026-07-01T00:00:00Z');
+    // @ts-expect-error drop playedAt so the comparator must use createdAt
+    delete b.playedAt;
+    const merged = mergeFeed([[item('did:me', 'a', a)], [item('did:f', 'b', b)]]);
+    expect(merged[0]!.rkey).toBe('b'); // b's createdAt is newer than a's playedAt
+  });
+
+  it('prependLive survives a live item with no playedAt', () => {
+    const feed = [item('did:me', 'a', play('1', '2026-06-30T10:00:00Z'))];
+    const live = play('9', '2026-07-01T00:00:00Z');
+    // @ts-expect-error malformed live arrival
+    delete live.playedAt;
+    expect(() => prependLive(feed, item('did:f', 'z', live))).not.toThrow();
+  });
 });
 
 /* ---- the security-critical sanitizer (D-20) ---- */

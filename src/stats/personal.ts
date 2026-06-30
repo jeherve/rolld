@@ -11,6 +11,13 @@
  */
 import type { GameRef, PlayRecord, RatingRecord } from '../records/types.js';
 
+/**
+ * A record's timestamp, defended against malformed data. Profile pages run these
+ * stats over *other users'* records (fetched and cast with no runtime check), so a
+ * missing or non-string timestamp must not throw — it sorts as "oldest" instead.
+ */
+const asTime = (value: string | undefined): string => (typeof value === 'string' ? value : '');
+
 export interface PlayedGame {
   game: GameRef;
   count: number;
@@ -29,12 +36,13 @@ export function mostPlayed(plays: PlayRecord[], topN?: number): PlayedGame[] {
   const byGame = new Map<string, PlayedGame>();
   for (const play of plays) {
     const id = play.game.id;
+    const playedAt = asTime(play.playedAt);
     const existing = byGame.get(id);
     if (existing) {
       existing.count++;
-      if (play.playedAt > existing.lastPlayed) existing.lastPlayed = play.playedAt;
+      if (playedAt > existing.lastPlayed) existing.lastPlayed = playedAt;
     } else {
-      byGame.set(id, { game: play.game, count: 1, lastPlayed: play.playedAt });
+      byGame.set(id, { game: play.game, count: 1, lastPlayed: playedAt });
     }
   }
   const sorted = [...byGame.values()].sort(
@@ -46,7 +54,7 @@ export function mostPlayed(plays: PlayRecord[], topN?: number): PlayedGame[] {
 /** Sort ratings high→low (tie-break: most recent). A SEPARATE shelf from most-played (D-38). */
 export function topRated(ratings: RatingRecord[], topN?: number): RatedGame[] {
   const sorted = ratings
-    .map((r) => ({ game: r.game, rating: r.rating, ratedAt: r.createdAt }))
+    .map((r) => ({ game: r.game, rating: r.rating, ratedAt: asTime(r.createdAt) }))
     .sort((a, b) => b.rating - a.rating || b.ratedAt.localeCompare(a.ratedAt));
   return topN === undefined ? sorted : sorted.slice(0, topN);
 }
@@ -54,7 +62,7 @@ export function topRated(ratings: RatingRecord[], topN?: number): RatedGame[] {
 /** Plays within a calendar year (by `playedAt`, which is why it's distinct from createdAt). */
 export function playedInYear(plays: PlayRecord[], year: number): PlayRecord[] {
   const prefix = `${year}-`;
-  return plays.filter((p) => p.playedAt.startsWith(prefix));
+  return plays.filter((p) => asTime(p.playedAt).startsWith(prefix));
 }
 
 /** Most-played, scoped to a year — the "played most this year" cut. */
@@ -71,7 +79,8 @@ export function timesPlayed(plays: PlayRecord[], gameId: string): number {
 export function lastPlayed(plays: PlayRecord[], gameId: string): string | null {
   let latest: string | null = null;
   for (const p of plays) {
-    if (p.game.id === gameId && (latest === null || p.playedAt > latest)) latest = p.playedAt;
+    const playedAt = asTime(p.playedAt);
+    if (p.game.id === gameId && (latest === null || playedAt > latest)) latest = playedAt;
   }
   return latest;
 }
