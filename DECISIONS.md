@@ -667,6 +667,22 @@ Markdown sat directly on the markpub member; the real shape nests it. rolld cont
 that *relies* on markpub interop should re-confirm the `$type`/required fields against a live
 record first. **Cost:** a small residual uncertainty isolated to one builder.
 
+### D-49 — Moderation enforcement: blob-refuse + a no-enumeration check endpoint + a `/api/blob` proxy URL.
+D-41 left the render-path filtering open ("passes through *or* is post-filtered by the Worker").
+Phase 3 resolves it without coupling every read to a Worker proxy (which would undo the
+serverless-reads model): (1) **blobs** route through the Worker's `/api/blob/<did>/<cid>` proxy,
+the strongest in-path point — it refuses a blocked DID's blobs and resolves the owner's PDS via
+Slingshot before streaming; (2) **record/feed/profile data** is filtered via a *targeted*
+`POST /api/moderation/check` that takes the DIDs/URIs the client is about to display and returns
+ONLY the blocked subset — so the browser filters its own render data and **never receives the
+blocklist** (no enumeration oracle, honoring D-41's "private, server-side only"). The blocklist
+lives in one KV entry (`moderation:blocklist`), edited with `wrangler kv key put`. **Why:** it
+keeps reads direct/serverless (the browser still queries Constellation/PDSes itself) while still
+giving the Worker the two enforcement points D-41 requires. **Cost accepted:** feed filtering is
+best-effort and one round-trip behind the data; the blob-refuse and the targeted check are the
+real teeth, and the blocklist is expected to be tiny. Also added (D-4 mitigation): an opt-in
+Constellation cache proxy at `/api/cx/*` (short TTL), used when the read layer is pointed at it.
+
 ---
 
 ## How to use this file

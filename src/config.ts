@@ -36,5 +36,14 @@ export const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 /** Constellation (microcosm) public backlink index — the read seam (Phase 3). */
 export const CONSTELLATION_BASE = 'https://constellation.microcosm.blue';
 
+/** Slingshot — fast record + verified-identity reads (D-23, D-26). */
+export const SLINGSHOT_BASE = 'https://slingshot.microcosm.blue';
+
+/** Spacedust — live links firehose websocket (D-26; the feed's live tail). */
+export const SPACEDUST_BASE = 'wss://spacedust.microcosm.blue';
+
+/** Public Bluesky AppView — follows graph, actor search, profile chrome, post threads. */
+export const PUBLIC_APPVIEW = 'https://public.api.bsky.app';
+
 /** Sent on every microcosm request (they ask for a descriptive UA + contact). */
 export const USER_AGENT = `rolld/0.0 (+${ORIGIN}; board game tracker; ${REPO_URL})`;

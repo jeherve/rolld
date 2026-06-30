@@ -1,0 +1,137 @@
+/**
+ * Public Bluesky reads (Phase 3) via the unauthenticated AppView. rolld reuses
+ * Bluesky's existing profile data (D-28) — a public profile page is just a
+ * different lens on `app.bsky.actor.profile` plus rolld records, with zero new
+ * profile data to store. The follows graph drives the friends-feed (D-26), and a
+ * shared entry's Bluesky reply thread becomes its comments, read-only (D-40 move 5)
+ * — "comments without building comments".
+ */
+import './../atproto/register.js';
+import { Client, ok, simpleFetchHandler } from '@atcute/client';
+import type { ActorIdentifier, ResourceUri } from '@atcute/lexicons/syntax';
+import { PUBLIC_APPVIEW } from '../config.js';
+
+export function appviewClient(base: string = PUBLIC_APPVIEW): Client {
+  return new Client({ handler: simpleFetchHandler({ service: base }) });
+}
+
+export interface BskyProfile {
+  did: string;
+  handle: string;
+  displayName?: string;
+  avatar?: string;
+  description?: string;
+  banner?: string;
+}
+
+/** The bio chrome for a profile page (D-28). Null if the actor can't be fetched. */
+export async function getProfile(client: Client, actor: string): Promise<BskyProfile | null> {
+  try {
+    const data = await ok(
+      client.get('app.bsky.actor.getProfile', { params: { actor: actor as ActorIdentifier } }),
+    );
+    return {
+      did: data.did,
+      handle: data.handle,
+      ...(data.displayName ? { displayName: data.displayName } : {}),
+      ...(data.avatar ? { avatar: data.avatar } : {}),
+      ...(data.description ? { description: data.description } : {}),
+      ...(data.banner ? { banner: data.banner } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export interface FollowActor {
+  did: string;
+  handle: string;
+  displayName?: string;
+  avatar?: string;
+}
+
+/** A page of the actor's follows (D-26 step 1). */
+export async function getFollows(
+  client: Client,
+  actor: string,
+  opts: { limit?: number; cursor?: string } = {},
+): Promise<{ follows: FollowActor[]; cursor?: string }> {
+  const data = await ok(
+    client.get('app.bsky.graph.getFollows', {
+      params: {
+        actor: actor as ActorIdentifier,
+        limit: opts.limit ?? 100,
+        ...(opts.cursor ? { cursor: opts.cursor } : {}),
+      },
+    }),
+  );
+  return {
+    follows: data.follows.map((f) => ({
+      did: f.did,
+      handle: f.handle,
+      ...(f.displayName ? { displayName: f.displayName } : {}),
+      ...(f.avatar ? { avatar: f.avatar } : {}),
+    })),
+    ...(data.cursor ? { cursor: data.cursor } : {}),
+  };
+}
+
+export interface ThreadComment {
+  uri: string;
+  authorHandle: string;
+  authorDisplayName?: string;
+  authorAvatar?: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface CommentThread {
+  comments: ThreadComment[];
+  likeCount: number;
+  replyCount: number;
+}
+
+/**
+ * The companion post's reply thread, flattened to a read-only comment list
+ * (D-40 move 5). Returns null if the post isn't reachable. Only top-level replies
+ * are surfaced in v1 (a "reply on Bluesky" link sends discussion there).
+ */
+export async function getCommentThread(client: Client, postUri: string): Promise<CommentThread | null> {
+  try {
+    const data = await ok(
+      client.get('app.bsky.feed.getPostThread', {
+        params: { uri: postUri as ResourceUri, depth: 1 },
+      }),
+    );
+    const thread = data.thread as {
+      post?: { likeCount?: number; replyCount?: number };
+      replies?: {
+        post?: {
+          uri: string;
+          author: { handle: string; displayName?: string; avatar?: string };
+          record: { text?: string; createdAt?: string };
+        };
+      }[];
+    };
+    const comments: ThreadComment[] = [];
+    for (const reply of thread.replies ?? []) {
+      const post = reply.post;
+      if (!post) continue;
+      comments.push({
+        uri: post.uri,
+        authorHandle: post.author.handle,
+        ...(post.author.displayName ? { authorDisplayName: post.author.displayName } : {}),
+        ...(post.author.avatar ? { authorAvatar: post.author.avatar } : {}),
+        text: post.record.text ?? '',
+        createdAt: post.record.createdAt ?? '',
+      });
+    }
+    return {
+      comments,
+      likeCount: thread.post?.likeCount ?? 0,
+      replyCount: thread.post?.replyCount ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
