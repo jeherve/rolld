@@ -1,6 +1,3 @@
-<!-- WRITING STYLE: the prose in this file (not the license/attribution text itself, which is
-     fixed) should be rewritten through the author's writing-style skill before final. -->
-
 # NOTICE
 
 rolld
@@ -64,6 +61,16 @@ dependency licenses are in the dependency tree (`package.json` / `package-lock.j
 - **Constellation** (`constellation.microcosm.blue`) — a community-run AT Protocol
   backlink index queried for social/aggregate reads. rolld depends on the hosted service;
   it does not bundle Constellation's source. See https://constellation.microcosm.blue.
+
+## Other AT Protocol services and libraries
+
+- **Slingshot** (`slingshot.microcosm.blue`) and **Spacedust** (`spacedust.microcosm.blue`)
+  — community-run AT Protocol services rolld queries for fast record/identity reads and the
+  live feed tail. rolld only queries the hosted instances; it does not bundle their source.
+  Both are open-source (see https://microcosm.blue).
+- **atcute** (`@atcute/*`) — the browser OAuth + XRPC client family rolld is built on. MIT.
+- **BoardGameGeek** XML API access requires a registered, server-side token; rolld follows
+  BGG's "Powered by BoardGameGeek" attribution requirement wherever its data appears.
 
 ---
 
