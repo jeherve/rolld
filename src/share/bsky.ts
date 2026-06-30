@@ -10,6 +10,7 @@
  */
 import type { ImageEmbed } from '../records/types.js';
 import type { RolldAgent } from '../atproto/client.js';
+import { BSKY_POST_LIMIT, countGraphemes, truncateGraphemes } from '../text/graphemes.js';
 
 export interface ShareTextInput {
   /** 'Played' or 'Rated'. */
@@ -21,10 +22,22 @@ export interface ShareTextInput {
   url: string;
 }
 
-/** Auto-draft, e.g. `Played Gloomhaven — https://rolld.at/@me/play/3k…`. */
+/**
+ * Auto-draft, e.g. `Played Gloomhaven — https://rolld.at/@me/play/3k`. Kept within
+ * Bluesky's 300-grapheme limit (D-16): a very long game name would otherwise
+ * produce an over-limit draft the user has to trim by hand. We trim the *name*
+ * region (with an ellipsis) and always keep the permalink whole — the link is the
+ * point of the post, and truncating it would also break the link facet.
+ */
 export function defaultShareText(input: ShareTextInput): string {
   const grade = input.rating ? ` ${input.rating}/10` : '';
-  return `${input.verb} ${input.gameName}${grade} — ${input.url}`;
+  const prefix = `${input.verb} ${input.gameName}${grade}`;
+  const suffix = ` — ${input.url}`;
+  const full = `${prefix}${suffix}`;
+  if (countGraphemes(full) <= BSKY_POST_LIMIT) return full;
+  // Reserve room for the suffix (the link) and a one-grapheme ellipsis.
+  const budget = BSKY_POST_LIMIT - countGraphemes(suffix) - 1;
+  return `${truncateGraphemes(prefix, Math.max(0, budget))}…${suffix}`;
 }
 
 const encoder = new TextEncoder();

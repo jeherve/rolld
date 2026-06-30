@@ -6,6 +6,7 @@ import {
   createCompanionPost,
   defaultShareText,
 } from '../src/share/bsky.js';
+import { BSKY_POST_LIMIT, countGraphemes } from '../src/text/graphemes.js';
 import type { ImageEmbed } from '../src/records/types.js';
 
 describe('defaultShareText (D-16)', () => {
@@ -19,6 +20,21 @@ describe('defaultShareText (D-16)', () => {
     expect(
       defaultShareText({ verb: 'Rated', gameName: 'Catan', rating: 8, url: 'https://rolld.at/@me/rating/13' }),
     ).toBe('Rated Catan 8/10 — https://rolld.at/@me/rating/13');
+  });
+
+  // Regression (M-2): a very long game name must not produce an over-limit draft
+  // the modal then blocks from posting. The link stays whole; only the name trims.
+  it('keeps the draft within the Bluesky grapheme limit and preserves the URL', () => {
+    const url = 'https://rolld.at/@me/play/3k';
+    const text = defaultShareText({ verb: 'Played', gameName: 'A'.repeat(400), url });
+    expect(countGraphemes(text)).toBeLessThanOrEqual(BSKY_POST_LIMIT);
+    expect(text.endsWith(` — ${url}`)).toBe(true); // full permalink survives
+    expect(text).toContain('…'); // the name was trimmed
+  });
+
+  it('leaves a normal-length draft untouched (no ellipsis)', () => {
+    const text = defaultShareText({ verb: 'Played', gameName: 'Wingspan', url: 'https://rolld.at/@me/play/3k' });
+    expect(text).toBe('Played Wingspan — https://rolld.at/@me/play/3k');
   });
 });
 
