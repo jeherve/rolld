@@ -683,6 +683,22 @@ best-effort and one round-trip behind the data; the blob-refuse and the targeted
 real teeth, and the blocklist is expected to be tiny. Also added (D-4 mitigation): an opt-in
 Constellation cache proxy at `/api/cx/*` (short TTL), used when the read layer is pointed at it.
 
+### D-50 — Publish via `goat record create` (no `goat lex push`); the `textContent` large-string lint warning is accepted.
+Phase 5 prep against the real `goat` CLI turned up two things the brief didn't have
+right. **(1) Publish mechanism:** this `goat` build has **no `goat lex push`/`publish`** —
+`goat lex` only parses, lints, diffs, and checks evolution rules. Publishing the schema
+records is done with **`goat record create -r <nsid> <file>`** into the
+`com.atproto.lexicon.schema` collection (the atproto guide's canonical putRecord path).
+The runbook (`scripts/publish-lexicons.md`) uses that, with a 🔍 to confirm at publish time
+whether goat auto-wraps the `$type`/collection. **(2) Lint warning:** `goat lex lint` flags a
+`large-string` on `play`/`rating` because `textContent` allows `maxLength: 100000`. That cap is
+**deliberate** (D-11: long first-game writeups are a primary use case), so the warning is
+reviewed and accepted, not fixed — the pre-publish gate (`scripts/check-lexicons.sh`) reports it
+without failing. **Why record it:** both are real corrections to the Phase 5 brief that the
+maintainer hits at launch; better to have them written down than rediscovered. **Cost:** none —
+the schemas parse and validate cleanly against the official tooling; only the publish *command*
+differs from what the brief assumed.
+
 ---
 
 ## How to use this file

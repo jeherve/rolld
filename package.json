@@ -15,6 +15,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p worker/tsconfig.json --noEmit",
     "lint": "eslint .",
+    "lint:lexicons": "tsx scripts/lexicon-validate.ts",
+    "check:lexicons": "bash scripts/check-lexicons.sh",
     "worker:dev": "wrangler dev --config worker/wrangler.toml",
     "worker:deploy": "wrangler deploy --config worker/wrangler.toml"
   },
