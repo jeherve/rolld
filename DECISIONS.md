@@ -2,6 +2,12 @@
      writing-style skill (available in Claude Code) before final — it should sound like the
      author, no AI-isms. The /about page draws on this file's substance but is a separate,
      general-audience rewrite (also via the style skill). -->
+<!-- PRE-LAUNCH: this file SHIPS publicly, but the docs/ tree does NOT (gitignored). Before
+     launch, do a pass to (1) soften the tone via the writing-style skill, and (2) remove or
+     relocate the references to docs/ (phase briefs, etc.) — a public reader can't open them.
+     Where a docs/ reference still earns its place, fold the substance into a file that ships
+     (README, /about) instead of pointing at a private path. Tracked as a Phase 5 launch
+     checklist item. -->
 
 # rolld — Decisions
 
