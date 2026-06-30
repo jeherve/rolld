@@ -83,3 +83,36 @@ describe('time-windowed + per-game cuts', () => {
     expect(playSummary(PLAYS)).toEqual({ totalPlays: 5, distinctGames: 3 });
   });
 });
+
+// Regression: profile pages run these stats over OTHER users' records, which are
+// fetched and cast with no runtime validation. A record with a missing/non-string
+// timestamp must not throw.
+describe('stats survive malformed records (untrusted PDS data)', () => {
+  const broken = (id: string, name: string): PlayRecord => {
+    const p = play(id, name, '2026-01-01T00:00:00Z');
+    // @ts-expect-error simulate a record written by another client without playedAt
+    delete p.playedAt;
+    return p;
+  };
+
+  it('mostPlayed does not throw and still ranks', () => {
+    const plays = [broken('1', 'Catan'), play('1', 'Catan', '2026-06-10T00:00:00Z'), broken('2', 'X')];
+    expect(() => mostPlayed(plays)).not.toThrow();
+    expect(mostPlayed(plays)[0]).toMatchObject({ count: 2, game: { id: '1' } });
+  });
+
+  it('mostPlayedThisYear does not throw on a timestamp-less record', () => {
+    expect(() => mostPlayedThisYear([broken('1', 'Catan')], 2026)).not.toThrow();
+  });
+
+  it('lastPlayed returns null rather than throwing for a timestamp-less record', () => {
+    expect(lastPlayed([broken('1', 'Catan')], '1')).toBe('');
+  });
+
+  it('topRated does not throw when a rating is missing createdAt', () => {
+    const r = rating('1', 'Catan', 8, '2026-01-01T00:00:00Z');
+    // @ts-expect-error malformed rating record
+    delete r.createdAt;
+    expect(() => topRated([r])).not.toThrow();
+  });
+});

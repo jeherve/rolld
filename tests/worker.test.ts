@@ -125,6 +125,25 @@ describe('worker routes', () => {
     expect((await r.json()).error).toBe('BggUnauthorized');
   });
 
+  // Regression: an unbounded ?ids= list would drive sequential BGG calls and pin a
+  // Worker invocation — DoS amplification (Sec#2).
+  it('rejects an over-long /api/games ids list without calling BGG', async () => {
+    const fetchImpl = vi.fn(async () => xml('<items/>'));
+    vi.stubGlobal('fetch', fetchImpl);
+    const ids = Array.from({ length: 101 }, (_v, i) => String(i + 1)).join(',');
+    const r = await worker.fetch(req(`/api/games?ids=${ids}`), env(fakeKv()));
+    expect(r.status).toBe(400);
+    expect((await r.json()).error).toBe('TooManyIds');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('still serves a within-cap /api/games request', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => xml('<items></items>')));
+    const r = await worker.fetch(req('/api/games?ids=1,2,3'), env(fakeKv()));
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual([]); // BGG returned nothing, but the request was accepted
+  });
+
   it('answers CORS preflight and sets the allow-origin header', async () => {
     const r = await worker.fetch(
       new Request('https://rolld.at/api/game/1', {

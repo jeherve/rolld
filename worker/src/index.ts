@@ -16,7 +16,7 @@ import { parseSearch, parseThing, parseThings } from '../../src/bgg/parse.js';
 import type { GameMetadata, SearchCandidate } from '../../src/bgg/types.js';
 import { BggError, fetchSearchXml, fetchThingXml } from './bgg.js';
 import { buildUserFeedXml } from './feed.js';
-import { corsHeaders, errorJson, json } from './http.js';
+import { corsHeaders, errorJson, json, safeUpstreamOrigin } from './http.js';
 import { blockedSubset, isBlockedDid, loadBlocklist } from './moderation.js';
 
 /**
@@ -43,6 +43,7 @@ const SEARCH_TTL_SECONDS = 60 * 60; // search queries change slowly; cache an ho
 const RSS_TTL_SECONDS = 10 * 60; // readers poll; regenerate the feed at most every 10 min (D-42).
 const CX_TTL_SECONDS = 60; // play counts change, unlike BGG data — short Constellation cache.
 const MAX_BATCH = 20; // BGG caps a `thing` call at 20 ids (D-31).
+const MAX_IDS = 100; // Per-request hydrate cap — bounds Worker/BGG work, blocks DoS amplification (Sec#2).
 
 const CONSTELLATION_BASE = 'https://constellation.microcosm.blue';
 const SLINGSHOT_BASE = 'https://slingshot.microcosm.blue';
@@ -74,18 +75,22 @@ async function resolveMany(env: Env, ids: string[]): Promise<GameMetadata[]> {
   const unique = [...new Set(ids.filter(Boolean))];
   const found = new Map<string, GameMetadata>();
   const misses: string[] = [];
-  for (const id of unique) {
-    const cached = await readGameCache(env, id);
-    if (cached) found.set(id, cached);
+  // Cache lookups are independent — read them all at once rather than serializing a
+  // KV round-trip per id (a 30-game feed otherwise pays ~30 sequential reads).
+  const cached = await Promise.all(unique.map((id) => readGameCache(env, id)));
+  unique.forEach((id, i) => {
+    const hit = cached[i];
+    if (hit) found.set(id, hit);
     else misses.push(id);
-  }
+  });
+  // BGG `thing` calls stay sequential (fetch etiquette, D-31); only the KV writes
+  // within a batch are independent, so fire those together.
   for (let i = 0; i < misses.length; i += MAX_BATCH) {
     const batch = misses.slice(i, i + MAX_BATCH);
     const xml = await fetchThingXml(batch.join(','), env.BGG_TOKEN);
-    for (const meta of parseThings(xml, new Date().toISOString())) {
-      await env.BGG_CACHE.put(gameKey(meta.id), JSON.stringify(meta));
-      found.set(meta.id, meta);
-    }
+    const metas = parseThings(xml, new Date().toISOString());
+    await Promise.all(metas.map((meta) => env.BGG_CACHE.put(gameKey(meta.id), JSON.stringify(meta))));
+    for (const meta of metas) found.set(meta.id, meta);
   }
   // Preserve requested order; drop ids BGG didn't return.
   return unique.map((id) => found.get(id)).filter((m): m is GameMetadata => m !== undefined);
@@ -143,10 +148,13 @@ async function serveBlob(request: Request, env: Env, did: string, cid: string): 
   );
   if (!idRes.ok) return errorJson(request, 404, 'NotFound', 'Unknown identity.');
   const pds = ((await idRes.json()) as { pds?: string }).pds;
-  if (!pds) return errorJson(request, 404, 'NotFound', 'No PDS for this identity.');
+  // The PDS endpoint comes from the (attacker-controllable) identity doc — validate
+  // it before fetching so the Worker can't be used as an SSRF proxy (Sec#1).
+  const pdsOrigin = pds ? safeUpstreamOrigin(pds) : null;
+  if (!pdsOrigin) return errorJson(request, 404, 'NotFound', 'No usable PDS for this identity.');
 
   const blobRes = await fetch(
-    `${pds}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`,
+    `${pdsOrigin}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`,
   );
   // The blob's stored mime type is attacker-controlled, and this Worker is served on
   // the app's own origin — so a user could upload an HTML "image" and get it served as
@@ -242,8 +250,14 @@ export default {
 
       // /api/games?ids=1,2,3 — batch hydrate for feeds/grids.
       if (pathname === '/api/games') {
-        const ids = (url.searchParams.get('ids') ?? '').split(',').map((s) => s.trim());
-        if (!ids.some(Boolean)) return errorJson(request, 400, 'BadRequest', 'Pass ?ids=…');
+        const ids = (url.searchParams.get('ids') ?? '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (!ids.length) return errorJson(request, 400, 'BadRequest', 'Pass ?ids=…');
+        if (ids.length > MAX_IDS) {
+          return errorJson(request, 400, 'TooManyIds', `At most ${MAX_IDS} ids per request.`);
+        }
         return json(request, await resolveMany(env, ids), { cacheSeconds: 86400 });
       }
 

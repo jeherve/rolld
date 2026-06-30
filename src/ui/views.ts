@@ -15,7 +15,7 @@ import type { GameRef, PlayRecord, ProfileRecord, RatingRecord } from '../record
 
 /** A play or rating record value seen through the entry-permalink lens (fields from either). */
 type EntryValue = Partial<PlayRecord> & Partial<RatingRecord> & { game: GameRef };
-import { appviewClient, getCommentThread, getProfile, type BskyProfile } from '../read/bsky.js';
+import { appviewClient, getCommentThread, getProfile, getProfiles, type BskyProfile } from '../read/bsky.js';
 import {
   gameDistinctPlayers,
   gamePlays,
@@ -34,7 +34,7 @@ import { countNoun, formatDate, relativeTime } from './format.js';
 import { html, raw, render, type SafeHtml } from './html.js';
 import { renderLanding } from './landing.js';
 import { openLogFlow, openRateFlow } from './flows.js';
-import { avatar, blobUrl, gameCover, gradeBadge, reportLink, sectionTitle } from './render.js';
+import { avatar, gameCover, gradeBadge, playPhotos, reportLink, sectionTitle } from './render.js';
 import { diceLoader, emptyState, errorState } from './states.js';
 
 const appview = appviewClient();
@@ -64,17 +64,19 @@ const loadError = (retry?: SafeHtml): SafeHtml =>
 /** Resolve the display identity for a set of DIDs (best-effort, for feed cards). */
 async function loadAuthors(dids: string[]): Promise<Map<string, FeedAuthor>> {
   const out = new Map<string, FeedAuthor>();
-  await Promise.all(
-    [...new Set(dids)].map(async (did) => {
-      const profile = await getProfile(appview, did);
-      out.set(did, {
-        did,
-        handle: profile?.handle ?? did,
-        ...(profile?.displayName ? { displayName: profile.displayName } : {}),
-        ...(profile?.avatar ? { avatar: profile.avatar } : {}),
-      });
-    }),
-  );
+  const unique = [...new Set(dids)];
+  // One batched call per 25 authors (getProfiles) instead of one request per DID.
+  const profiles = await getProfiles(appview, unique);
+  const byDid = new Map(profiles.map((p) => [p.did, p]));
+  for (const did of unique) {
+    const profile = byDid.get(did);
+    out.set(did, {
+      did,
+      handle: profile?.handle ?? did,
+      ...(profile?.displayName ? { displayName: profile.displayName } : {}),
+      ...(profile?.avatar ? { avatar: profile.avatar } : {}),
+    });
+  }
   return out;
 }
 
@@ -153,8 +155,12 @@ export function dashboard(ctx: PageCtx): void {
         );
         return;
       }
-      const authors = await loadAuthors(feed.map((f) => f.authorDid));
-      const metas = await resolveGames(feed.map((f) => f.play.game.id));
+      // Author identities and game metadata are independent fan-outs — run them
+      // together so the dashboard waits on the slower of the two, not their sum.
+      const [authors, metas] = await Promise.all([
+        loadAuthors(feed.map((f) => f.authorDid)),
+        resolveGames(feed.map((f) => f.play.game.id)),
+      ]);
       render(
         feedEl,
         html`${feed.map((item) =>
@@ -517,11 +523,18 @@ function entryView(
   meta: GameMetadata | null,
 ): SafeHtml {
   const uri = `at://${did}/${kind === 'play' ? COLLECTION.play : COLLECTION.rating}/${rkey}`;
-  const noteHtml = value.content?.text?.markdown
-    ? raw(renderMarkdown(value.content.text.markdown))
-    : value.textContent
-      ? html`<p>${value.textContent}</p>`
-      : null;
+  // Render the note via its union `$type` (D-11), not its shape: an unknown future
+  // content member falls back to the universal `textContent` instead of being
+  // mis-rendered as Markdown. The markdown itself is guarded to a string so a
+  // malformed record can't throw inside the sanitizer.
+  const markdown =
+    value.content?.$type === 'at.markpub.markdown' ? value.content.text?.markdown : undefined;
+  const noteHtml =
+    typeof markdown === 'string'
+      ? raw(renderMarkdown(markdown))
+      : value.textContent
+        ? html`<p>${value.textContent}</p>`
+        : null;
   return html`
     <article class="entry">
       <a class="entry-game" href="${gamePath(value.game.id)}" data-link>
@@ -534,9 +547,7 @@ function entryView(
           ? html` played this ${value.playedAt ? formatDate(value.playedAt) : ''}`
           : html` graded this ${value.rating ? gradeBadge(value.rating) : ''}`}
       </p>
-      ${kind === 'play' && value.images?.length
-        ? html`<div class="photos big">${value.images.map((img) => html`<img class="photo" src="${blobUrl(did, img.image.ref.$link)}" alt="${img.alt}" />`)}</div>`
-        : ''}
+      ${kind === 'play' ? playPhotos(value.images, did, true) : ''}
       ${noteHtml ? html`<div class="note">${noteHtml}</div>` : ''}
       <div class="entry-foot">
         <a class="mono small" href="${didEntryPath(did, kind, rkey)}" data-link>permanent link</a>

@@ -14,13 +14,23 @@ import type { GameRef, ImageEmbed, PlayRecord, Player, ProfileRecord, RatingReco
 
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 
+/**
+ * atproto lexicon `maxLength` is a UTF-8 BYTE limit, not a JS `String.length`
+ * (UTF-16 code-unit) count. The two diverge for any non-ASCII text: a 500-CJK-char
+ * note is 500 code units but ~1500 bytes. Measuring code units lets an over-limit
+ * record pass this guard and then get rejected by the PDS with an opaque error —
+ * exactly the "malformed record never reaches the PDS" promise this file makes.
+ * So we measure bytes, the way the PDS does.
+ */
+const byteLen = (s: string): number => new TextEncoder().encode(s).length;
+
 function checkGameRef(game: GameRef | undefined, label: string, errs: string[]): void {
   if (!game || typeof game !== 'object') {
     errs.push(`${label}: missing gameRef`);
     return;
   }
-  if (!game.id || game.id.length > 64) errs.push(`${label}.id: required, ≤64 chars`);
-  if (!game.name || game.name.length > 512) errs.push(`${label}.name: required, ≤512 chars`);
+  if (!game.id || byteLen(game.id) > 64) errs.push(`${label}.id: required, ≤64 bytes`);
+  if (!game.name || byteLen(game.name) > 512) errs.push(`${label}.name: required, ≤512 bytes`);
   if (game.yearPublished !== undefined && !Number.isInteger(game.yearPublished)) {
     errs.push(`${label}.yearPublished: must be an integer`);
   }
@@ -43,15 +53,18 @@ function checkPlayer(player: Player, i: number, errs: string[]): void {
   if (!player.did && !player.displayName) {
     errs.push(`players[${i}]: needs a did or a displayName`);
   }
-  if (player.displayName && player.displayName.length > 320) {
-    errs.push(`players[${i}].displayName: ≤320 chars`);
+  if (player.displayName && byteLen(player.displayName) > 320) {
+    errs.push(`players[${i}].displayName: ≤320 bytes`);
+  }
+  if (player.score !== undefined && !Number.isInteger(player.score)) {
+    errs.push(`players[${i}].score: must be an integer`);
   }
 }
 
 function checkImage(image: ImageEmbed, i: number, errs: string[]): void {
   if (!image.image || image.image.$type !== 'blob') errs.push(`images[${i}].image: missing blob`);
   if (!image.alt) errs.push(`images[${i}].alt: alt text is required (D-33)`);
-  if (image.alt && image.alt.length > 2000) errs.push(`images[${i}].alt: ≤2000 chars`);
+  if (image.alt && byteLen(image.alt) > 2000) errs.push(`images[${i}].alt: ≤2000 bytes`);
 }
 
 export function validatePlay(record: PlayRecord): string[] {
@@ -64,15 +77,16 @@ export function validatePlay(record: PlayRecord): string[] {
   record.expansions?.forEach((g, i) => checkGameRef(g, `expansions[${i}]`, errs));
   if (record.images && record.images.length > 4) errs.push('images: at most 4 (D-33)');
   record.images?.forEach((img, i) => checkImage(img, i, errs));
-  if (record.location && record.location.length > 500) errs.push('location: ≤500 chars');
-  if (record.durationMinutes !== undefined && record.durationMinutes < 0) {
-    errs.push('durationMinutes: must be ≥0');
+  if (record.location && byteLen(record.location) > 500) errs.push('location: ≤500 bytes');
+  if (record.durationMinutes !== undefined) {
+    if (!Number.isInteger(record.durationMinutes)) errs.push('durationMinutes: must be an integer');
+    else if (record.durationMinutes < 0) errs.push('durationMinutes: must be ≥0');
   }
   record.winnerNames?.forEach((n, i) => {
-    if (n.length > 320) errs.push(`winnerNames[${i}]: ≤320 chars`);
+    if (byteLen(n) > 320) errs.push(`winnerNames[${i}]: ≤320 bytes`);
   });
-  if (record.textContent && record.textContent.length > 100000) {
-    errs.push('textContent: ≤100000 chars');
+  if (record.textContent && byteLen(record.textContent) > 100000) {
+    errs.push('textContent: ≤100000 bytes');
   }
   return errs;
 }
@@ -85,8 +99,8 @@ export function validateRating(record: RatingRecord): string[] {
     errs.push('rating: integer 1–10');
   }
   checkDatetime(record.createdAt, 'createdAt', errs);
-  if (record.textContent && record.textContent.length > 100000) {
-    errs.push('textContent: ≤100000 chars');
+  if (record.textContent && byteLen(record.textContent) > 100000) {
+    errs.push('textContent: ≤100000 bytes');
   }
   return errs;
 }
@@ -94,7 +108,7 @@ export function validateRating(record: RatingRecord): string[] {
 export function validateProfile(record: ProfileRecord): string[] {
   const errs: string[] = [];
   checkDatetime(record.createdAt, 'createdAt', errs);
-  if (record.displayName && record.displayName.length > 320) errs.push('displayName: ≤320 chars');
+  if (record.displayName && byteLen(record.displayName) > 320) errs.push('displayName: ≤320 bytes');
   return errs;
 }
 

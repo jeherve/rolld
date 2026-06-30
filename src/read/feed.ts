@@ -25,6 +25,19 @@ export interface FeedItem {
 export type FeedSortKey = 'playedAt' | 'createdAt';
 
 /**
+ * The sort timestamp for an item, defended against malformed records. Plays arrive
+ * from *other users' PDSes* (`repo.ts` casts them with no runtime check), so a
+ * follow could publish — directly, bypassing our write-path validation — a play
+ * with a missing or non-string `playedAt`. We fall back to `createdAt`, then to an
+ * empty string, so a single bad record can never throw and break the whole feed
+ * (the module's contract: per-follow failures degrade, they don't break the feed).
+ */
+function sortKey(item: FeedItem, by: FeedSortKey): string {
+  const value = item.play[by] ?? item.play.createdAt;
+  return typeof value === 'string' ? value : '';
+}
+
+/**
  * Merge any number of feed-item lists into one reverse-chronological feed,
  * de-duplicated by uri (a play could arrive from both the own-list and a follow's
  * list, or twice from a live prepend). Sort key defaults to `playedAt` — the feed
@@ -41,15 +54,12 @@ export function mergeFeed(lists: FeedItem[][], by: FeedSortKey = 'playedAt'): Fe
       else if (item.isOwn && !existing.isOwn) seen.set(item.uri, item);
     }
   }
-  return [...seen.values()].sort((a, b) => {
-    const ka = a.play[by];
-    const kb = b.play[by];
-    return (
-      kb.localeCompare(ka) ||
-      b.play.createdAt.localeCompare(a.play.createdAt) ||
-      b.uri.localeCompare(a.uri)
-    );
-  });
+  return [...seen.values()].sort(
+    (a, b) =>
+      sortKey(b, by).localeCompare(sortKey(a, by)) ||
+      sortKey(b, 'createdAt').localeCompare(sortKey(a, 'createdAt')) ||
+      b.uri.localeCompare(a.uri),
+  );
 }
 
 /** Prepend a live-arriving item (Spacedust) to an existing feed, de-duping. */

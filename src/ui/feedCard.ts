@@ -10,7 +10,7 @@ import { entryPath } from '../links.js';
 import type { PlayRecord } from '../records/types.js';
 import { playersSummary, relativeTime, winnerSummary } from './format.js';
 import { html, type SafeHtml } from './html.js';
-import { avatar, blobUrl, gameCover, reportLink } from './render.js';
+import { avatar, gameCover, playPhotos, reportLink } from './render.js';
 
 export interface FeedAuthor {
   did: string;
@@ -34,21 +34,6 @@ function noteSnippet(play: PlayRecord): SafeHtml | null {
   return html`<p class="note-snippet">${snippet}</p>`;
 }
 
-function photos(play: PlayRecord, did: string): SafeHtml | null {
-  if (!play.images?.length) return null;
-  return html`<div class="photos">
-    ${play.images.slice(0, 4).map(
-      (img) =>
-        html`<img
-          class="photo"
-          src="${blobUrl(did, img.image.ref.$link)}"
-          alt="${img.alt}"
-          loading="lazy"
-        />`,
-    )}
-  </div>`;
-}
-
 export function feedCard(data: FeedCardData, now: number = Date.now()): SafeHtml {
   const { play, author, meta, rkey } = data;
   const name = play.game.name;
@@ -70,7 +55,7 @@ export function feedCard(data: FeedCardData, now: number = Date.now()): SafeHtml
       <div class="fc-meta mono muted">
         played ${playersSummary(play)}${winner ? html` · ${winner}` : ''}
       </div>
-      ${noteSnippet(play)} ${photos(play, author.did)}
+      ${noteSnippet(play)} ${playPhotos(play.images, author.did)}
       <div class="fc-foot">
         <a class="permalink mono" href="${entryPath(author.handle, 'play', rkey)}" data-link>view play</a>
         ${reportLink(data.uri)}

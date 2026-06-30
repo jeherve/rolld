@@ -43,6 +43,40 @@ export async function getProfile(client: Client, actor: string): Promise<BskyPro
   }
 }
 
+/**
+ * Batch profile hydration — `app.bsky.actor.getProfiles` takes up to 25 actors per
+ * call, so a feed of N authors costs ceil(N/25) requests instead of N. Chunks run
+ * concurrently; a failed chunk degrades to "no profile for those dids" (the feed
+ * card falls back to the bare DID) rather than failing the whole feed.
+ */
+export async function getProfiles(client: Client, actors: string[]): Promise<BskyProfile[]> {
+  const unique = [...new Set(actors)];
+  const chunks: string[][] = [];
+  for (let i = 0; i < unique.length; i += 25) chunks.push(unique.slice(i, i + 25));
+  const pages = await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const data = await ok(
+          client.get('app.bsky.actor.getProfiles', {
+            params: { actors: chunk as ActorIdentifier[] },
+          }),
+        );
+        return data.profiles;
+      } catch {
+        return [];
+      }
+    }),
+  );
+  return pages.flat().map((data) => ({
+    did: data.did,
+    handle: data.handle,
+    ...(data.displayName ? { displayName: data.displayName } : {}),
+    ...(data.avatar ? { avatar: data.avatar } : {}),
+    ...(data.description ? { description: data.description } : {}),
+    ...(data.banner ? { banner: data.banner } : {}),
+  }));
+}
+
 export interface FollowActor {
   did: string;
   handle: string;
