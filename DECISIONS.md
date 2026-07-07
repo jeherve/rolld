@@ -724,3 +724,26 @@ heavy full-colour blob into every page's bundle. Cost accepted: the face SVG is 
 render. It's a verbatim family asset shared with atmot/skypress, so it isn't re-compressed here
 unilaterally (that would diverge the shared copies); shrinking it is a maintainer call to make
 across all three projects at once. Lazy-loading takes the sting out in the meantime.
+
+### D-53 — The "Powered by BGG" logo lives in the global footer, linked back to BoardGameGeek.
+BGG's licence requires that any public-facing app showing their data carry the "Powered by BGG"
+logo, displayed large enough that the text stays legible, and linked back to BoardGameGeek — a
+condition of the API access the whole catalogue depends on (D-31), not a nicety. Game metadata
+(covers, weights, names, ratings) surfaces on more than the game page — it's in the feed, in
+search, on the dashboard — so a per-page credit would be easy to miss somewhere. The footer is
+global, so one placement covers every page, present and future, with no per-view bookkeeping.
+The mark is served static from `/powered-by-bgg.svg` as an `<img>`, the same handling the
+full-colour face gets and for the same reasons (D-52): it's a full-colour asset that must keep
+its own colours, so it must not pick up `currentColor`, and it stays out of the JS bundle. The
+file used is BGG's white die-and-wordmark mark, chosen because it stays legible on rolld's dark
+chrome (`--bg`) — BGG's full "POWERED BY BGG" lockup ships in a dark-purple build (`#3F3A60`)
+that all but disappears on the dark background, and no white build of the full lockup was on
+hand. The "Powered by" attribution the licence asks for is carried in text by the link's
+`title`/`alt` ("Powered by BoardGameGeek"), so the credit reads correctly to sighted and
+screen-reader users alike even though the glyph itself is the compact mark. It opts out of the
+footer's icon fade so nothing dims the required credit. The existing plain-text BGG credits on
+the game page and `/about` stay — they're contextual prose, not a substitute for the logo. Why the footer over the game page: coverage and durability beat proximity here; the logo
+being one scroll below the data it credits is a fine trade for never having to remember to add
+it to a new view. Cost accepted: the credit shows on the handful of pages that carry no BGG data
+at all (login, error states) — harmless, and the norm for "Powered by" footers. If BGG later
+tightens the rule to "on the data view itself," this becomes a game-page placement instead.

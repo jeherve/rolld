@@ -26,6 +26,9 @@ export const PROFILE_RKEY = 'self';
 export const AUTHOR_PROFILE_URL = 'https://bsky.app/profile/jeremy.herve.bzh';
 export const REPO_URL = 'https://tangled.org/jeremy.herve.bzh/rolld';
 
+/** BoardGameGeek home — where the footer's required "Powered by BGG" logo links (D-31, D-53). */
+export const BGG_URL = 'https://boardgamegeek.com';
+
 /** Where abuse reports go (D-41, CC-8). The inbox is a maintainer action item. */
 export const ABUSE_EMAIL = 'abuse@rolld.at';
 
