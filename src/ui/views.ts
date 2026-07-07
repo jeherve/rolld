@@ -31,7 +31,7 @@ import { subscribeToPlays } from '../read/spacedust.js';
 import { mostPlayed, playSummary, timesPlayed, topRated } from '../stats/personal.js';
 import type { PageCtx } from './context.js';
 import { feedCard, type FeedAuthor } from './feedCard.js';
-import { countNoun, formatDate, relativeTime } from './format.js';
+import { countNoun, formatDate, hasReportableContent, relativeTime } from './format.js';
 import { html, raw, render, type SafeHtml } from './html.js';
 import { externalMark } from './icons.js';
 import { renderLanding } from './landing.js';
@@ -552,7 +552,7 @@ function entryView(
       ${noteHtml ? html`<div class="note">${noteHtml}</div>` : ''}
       <div class="entry-foot">
         <a class="mono small" href="${didEntryPath(did, kind, rkey)}" data-link>permanent link</a>
-        ${reportLink(uri)}
+        ${hasReportableContent(value) ? reportLink(uri) : ''}
       </div>
       <div id="comments"></div>
       ${ctx.state.session ? '' : signInPrompt(ctx, 'Keep your own log of every game you play.')}

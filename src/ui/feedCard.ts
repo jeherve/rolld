@@ -8,7 +8,7 @@
 import type { GameMetadata } from '../bgg/types.js';
 import { entryPath } from '../links.js';
 import type { PlayRecord } from '../records/types.js';
-import { playersSummary, relativeTime, winnerSummary } from './format.js';
+import { hasReportableContent, playersSummary, relativeTime, winnerSummary } from './format.js';
 import { html, type SafeHtml } from './html.js';
 import { avatar, gameCover, playPhotos, reportLink } from './render.js';
 
@@ -60,7 +60,7 @@ export function feedCard(data: FeedCardData, now: number = Date.now()): SafeHtml
       ${noteSnippet(play)} ${playPhotos(play.images, author.did)}
       <div class="fc-foot">
         <a class="permalink mono" href="${entryPath(author.handle, 'play', rkey)}" data-link>view play</a>
-        ${reportLink(data.uri)}
+        ${hasReportableContent(play) ? reportLink(data.uri) : ''}
       </div>
     </article>
   `;

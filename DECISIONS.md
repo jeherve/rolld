@@ -400,7 +400,9 @@ no-server model:
   rolld curates its own surface, it's not the network's police.
 - Reports: a Report link → `abuse@rolld.at` email (pre-filled with the item's
   at-uri/URL) on every play/rating/photo/profile. No moderation backend. atproto's native
-  report flow routes to a labeler (which we don't run), so it's unused in v1.
+  report flow routes to a labeler (which we don't run), so it's unused in v1. *(Refined by
+  D-55: on plays/ratings the link now shows only when the item carries reportable content —
+  a note or a photo — instead of on every one.)*
 - Takedown = a private KV blocklist the Worker enforces. The one piece of private,
   mutable, server-side moderation state: a single Cloudflare KV entry (DIDs + record
   URIs), server-side only, never shipped to the browser (so it stays private), edited via
@@ -771,3 +773,27 @@ play/rating/profile links are untouched; only the feed's own address and its `<a
 rel="self">` moved. This supersedes the URL in D-42 (the feature is unchanged). Cost accepted:
 `/api/` leaks a whiff of plumbing into a user-visible URL, and any early shared feed link on
 the old path would break; acceptable pre-launch, before any such link exists.
+
+### D-55 — The Report link shows only on plays/ratings that carry reportable content.
+D-41 put a Report link on every play, rating, photo, and profile: one consistent path to
+`abuse@rolld.at`. In practice most logs are pure metadata: a game, a date, sometimes who else
+was there and who won, all of it structured data pulled from BGG or picked from lists. There's
+nothing a stranger could meaningfully report on a card that says someone played Catan on
+Tuesday, so a prominent "⚐ Report" under it points at nothing and just adds noise.
+
+So on plays and ratings the link now appears only when the item actually carries user-authored
+free content: a note (Markdown or plain text) or a photo. A metadata-only log shows no Report
+link. Profiles keep it unconditionally, since a profile always has a user-written name, bio, or
+avatar. The gate is one pure helper, `hasReportableContent()`, used by both the feed card and
+the entry page so the two can't drift.
+
+Why: the report path exists to report content, and a log with no content has none. This keeps a
+report affordance everywhere content can actually live, and drops it only where it was clutter.
+It refines D-41's intent rather than retreating from it; the moderation model (KV blocklist,
+email reports, no Ozone) is unchanged.
+
+Cost accepted: player and winner names are user-typed free text too, and a metadata-only play
+still carries those, so this isn't a perfectly airtight surface. Someone could hide something
+abusive in a name and that card would no longer offer a Report link. That surface is thin (short
+labels, no formatting, no images) and judged acceptable for v1; if it ever matters, folding
+names into `hasReportableContent()` is a one-line change. This refines the reports bullet of D-41.

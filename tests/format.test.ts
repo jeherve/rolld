@@ -3,6 +3,7 @@ import {
   countNoun,
   formatDate,
   formatRating,
+  hasReportableContent,
   playersSummary,
   relativeTime,
   winnerSummary,
@@ -50,6 +51,38 @@ describe('playersSummary', () => {
         play({ players: [{ displayName: 'A' }, { displayName: 'B' }, { displayName: 'C' }] }),
       ),
     ).toBe('with A, B and C');
+  });
+});
+
+describe('hasReportableContent', () => {
+  it('is false for a metadata-only play, so the Report link is hidden (D-55)', () => {
+    expect(hasReportableContent(play())).toBe(false);
+    expect(hasReportableContent(play({ players: [{ displayName: 'Alice' }], winnerNames: ['Alice'] }))).toBe(
+      false,
+    );
+  });
+  it('is true once a note or a photo is present', () => {
+    expect(hasReportableContent(play({ textContent: 'great game' }))).toBe(true);
+    expect(
+      hasReportableContent(
+        play({ content: { $type: 'at.markpub.markdown', text: { markdown: '**great** game' } } }),
+      ),
+    ).toBe(true);
+    expect(
+      hasReportableContent(
+        play({
+          images: [
+            {
+              alt: '',
+              image: { $type: 'blob', ref: { $link: 'cid' }, mimeType: 'image/jpeg', size: 1 },
+            },
+          ],
+        }),
+      ),
+    ).toBe(true);
+  });
+  it('ignores whitespace-only notes', () => {
+    expect(hasReportableContent(play({ textContent: '   ' }))).toBe(false);
   });
 });
 
