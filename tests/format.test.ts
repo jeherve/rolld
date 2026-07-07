@@ -37,8 +37,8 @@ describe('formatDate', () => {
 });
 
 describe('playersSummary', () => {
-  it('is solo with no players', () => {
-    expect(playersSummary(play())).toBe('solo');
+  it('is null with no players, so the UI shows nothing rather than "solo"', () => {
+    expect(playersSummary(play())).toBeNull();
   });
   it('lists names naturally', () => {
     expect(playersSummary(play({ players: [{ displayName: 'Alice' }] }))).toBe('with Alice');
