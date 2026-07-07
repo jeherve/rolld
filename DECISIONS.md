@@ -797,3 +797,80 @@ still carries those, so this isn't a perfectly airtight surface. Someone could h
 abusive in a name and that card would no longer offer a Report link. That surface is thin (short
 labels, no formatting, no images) and judged acceptable for v1; if it ever matters, folding
 names into `hasReportableContent()` is a one-line change. This refines the reports bullet of D-41.
+
+### D-56 — Tagging a co-player uses a network-wide handle typeahead.
+D-15 lets a play name the people you played with either by DID (a real atproto identity) or by
+a plain string, so tagging never blocks on everyone being on the network. But making someone
+type or paste a full handle to get the DID form is exactly the kind of friction that means it
+never happens, and you end up with a log full of bare names that link to nobody.
+
+So the "who did you play with" field in the log flow is now a typeahead. As you type, it searches
+the whole network for matching handles and shows them with their avatar; pick one and the
+co-player is tagged by DID, so their name becomes a link to their profile later. Type a name and
+ignore the suggestions and it stays a plain string, exactly as before. Editing the field after a
+pick drops the DID back to free text, so you can't end up tagged to someone you didn't mean.
+
+The search goes through typeahead.waow.tech, which speaks the same
+`app.bsky.actor.searchActorsTypeahead` call as the AppView but over the *whole* network rather
+than one platform's curated user list. That matters here: the person you played Catan with might
+be on any PDS, and a co-player you can only tag if they're a Bluesky user is a poorer version of
+the feature. It's kept in its own config constant (`TYPEAHEAD_API`), so swapping the host is a
+one-line change, same as the AppView (D-51). The lookup is best-effort: if it's down, the field
+is still a plain name box, because free text was always the floor (D-15).
+
+Why: the DID tag is what makes co-players real (links, later stats, "played with you"), and the
+only way people actually use it is if it costs nothing. A typeahead makes the good path the easy
+path.
+
+Cost accepted: a second network dependency on a surface that used to be pure local text, and a
+third-party host in the request path for the search. Both degrade to the old free-text behaviour
+on failure, and neither touches what gets written to your PDS, so the blast radius is a missing
+dropdown, not a broken log. Winners marked among tagged players are now recorded by DID
+(`winnerDids`) rather than name, which `winnerSummary` already reads.
+
+### D-57 — Profile bios render their own facets, and link out to the Bluesky profile.
+rolld reuses your Bluesky profile as its profile chrome (D-28), and the AppView hands the bio
+back as a flat string with the links, @mentions, and #hashtags flattened into plain text — the
+facet data isn't in the `getProfile` response. Shown as-is, a bio that says "I work
+@automattic.com, posts about #boardgames" is just grey text; the mentions and tags a person
+deliberately put there go dead.
+
+So, like the Bluesky app does on render, rolld detects the facets itself and makes them live:
+URLs become external links, @handles link to that person's rolld profile (the rolld-native thing
+to do, and it keeps you in the app), and #hashtags link to the Atmosphere's tag feed. Everything
+else stays plain, and — this is the part that matters — every segment, including the visible text
+of a link, goes through the escaping `html` helper, and only `https?://` URLs are ever turned
+into an anchor. A bio can't smuggle a `javascript:` href or break out of an attribute (D-19,
+D-20). The detection is a pure function with its own tests, because it's the kind of code that
+looks fine and is quietly wrong at the edges (emails read as mentions, trailing punctuation
+swallowed into a URL).
+
+The profile also gets an explicit link out to the person's Bluesky profile, alongside the
+existing "full log" and RSS links. rolld is a lens on an atproto identity, not a walled garden;
+pointing back at where the bio and follows actually live is honest about that.
+
+Why: the bio is the one piece of free, human-written text on a profile, and honouring the links
+and tags someone put in it is the difference between a profile that feels alive and one that
+feels scraped.
+
+Cost accepted: the facet detection is rolld's own, not the record's real facets, so it can
+disagree with how another app renders the same bio (a bare `domain.com` with no scheme isn't
+linked here, for instance). That's the same trade the Bluesky app makes at render time, and it's
+strictly additive — worst case a link stays plain text, which is where we started.
+
+### D-58 — Say "complexity", not "weight".
+BGG calls a game's difficulty rating its "weight" (the `averageweight` field, 1–5). That's
+jargon: outside the hobby, "weight 2.5/5" reads like a bug or a shipping stat, not "this is a
+medium-difficulty game." The word only makes sense if you already know BGG's vocabulary, which is
+exactly the audience rolld shouldn't assume.
+
+So the game page shows "complexity 2.5/5", and the /about page credits BGG for "complexity
+ratings" rather than "weights". The stored value and the parsing are untouched — this is purely
+the human-facing label (the `GameMetadata.weight` field keeps BGG's name internally, since that's
+what the source calls it). Per the family's plain-language rule (D-30): name things by what they
+mean to the reader, not by the upstream's term of art.
+
+Cost accepted: a small divergence from BGG's own wording, so someone cross-referencing a game on
+BGG sees "weight" there and "complexity" here. They're plainly the same 1–5 number, and "clearer
+to a newcomer" wins over "matches the source's label" on a surface most people meet before they
+ever open BGG.
