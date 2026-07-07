@@ -77,6 +77,48 @@ export const listRatings = (
   opts?: { limit?: number; cursor?: string; signal?: AbortSignal },
 ): Promise<ListPage<RatingRecord>> => listRecords<RatingRecord>(client, repo, COLLECTION.rating, opts);
 
+/**
+ * List a whole collection, following the cursor until the repo is exhausted. Stats
+ * and full-log views need every record — a single `listRecords` page silently caps
+ * a prolific user (a PDS page is ~100), so those callers use this, not `listRecords`.
+ * `max` bounds a misbehaving PDS that never drops the cursor.
+ */
+export async function listAllRecords<T>(
+  client: Client,
+  repo: string,
+  collection: string,
+  opts: { pageLimit?: number; max?: number; signal?: AbortSignal } = {},
+): Promise<RepoRecord<T>[]> {
+  const pageLimit = opts.pageLimit ?? 100;
+  const max = opts.max ?? 5000;
+  const out: RepoRecord<T>[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await listRecords<T>(client, repo, collection, {
+      limit: pageLimit,
+      ...(cursor ? { cursor } : {}),
+      ...(opts.signal ? { signal: opts.signal } : {}),
+    });
+    out.push(...page.records);
+    // A page with no records ends the walk even if the PDS still hands back a cursor.
+    cursor = page.records.length > 0 ? page.cursor : undefined;
+  } while (cursor && out.length < max);
+  return out;
+}
+
+export const listAllPlays = (
+  client: Client,
+  repo: string,
+  opts?: { pageLimit?: number; max?: number; signal?: AbortSignal },
+): Promise<RepoRecord<PlayRecord>[]> => listAllRecords<PlayRecord>(client, repo, COLLECTION.play, opts);
+
+export const listAllRatings = (
+  client: Client,
+  repo: string,
+  opts?: { pageLimit?: number; max?: number; signal?: AbortSignal },
+): Promise<RepoRecord<RatingRecord>[]> =>
+  listAllRecords<RatingRecord>(client, repo, COLLECTION.rating, opts);
+
 /** Read one record's value from a repo (e.g. a single entry permalink), or null. */
 export async function getRecordValue<T>(
   client: Client,
