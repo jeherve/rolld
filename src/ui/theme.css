@@ -262,6 +262,17 @@ footer.status .avatar {
   height: 20px;
   display: block;
 }
+/* "Powered by BGG" logo (D-53): full opacity and unmodified colours — BGG's licence
+   forbids recolouring or fading it, and asks that the text stay easily legible, so it
+   opts out of the .iconlink fade and renders larger than the sibling glyphs. */
+footer.status .bgg-credit {
+  opacity: 1;
+}
+footer.status .bgg-logo {
+  height: 30px;
+  width: auto;
+  display: block;
+}
 
 /* ---- personality motifs (chrome only; D-36) ------------------------------- */
 

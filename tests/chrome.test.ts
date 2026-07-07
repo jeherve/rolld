@@ -3,7 +3,7 @@ import { render } from '../src/ui/html.js';
 import { renderHeader } from '../src/ui/header.js';
 import { renderFooter } from '../src/ui/footer.js';
 import { diceLoader, emptyState, errorState } from '../src/ui/states.js';
-import { REPO_URL, AUTHOR_PROFILE_URL } from '../src/config.js';
+import { REPO_URL, AUTHOR_PROFILE_URL, BGG_URL } from '../src/config.js';
 
 function mount(part: ReturnType<typeof renderHeader>): HTMLElement {
   const root = document.createElement('div');
@@ -41,6 +41,15 @@ describe('renderFooter', () => {
     const root = mount(renderFooter());
     expect(root.querySelector('img.avatar')?.getAttribute('src')).toBe('/jeremy-herve.svg');
     expect(root.querySelector(`a[href="${REPO_URL}"] svg`)).not.toBeNull();
+  });
+
+  it('carries the "Powered by BGG" logo linked back to BoardGameGeek (D-31, D-53)', () => {
+    const root = mount(renderFooter());
+    const link = root.querySelector(`a[href="${BGG_URL}"]`);
+    expect(link).not.toBeNull();
+    const img = link?.querySelector('img.bgg-logo');
+    expect(img?.getAttribute('src')).toBe('/powered-by-bgg.svg');
+    expect(img?.getAttribute('alt')).toBe('Powered by BGG');
   });
 });
 
