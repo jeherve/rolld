@@ -416,7 +416,7 @@ function profileView(
           ${top.length
             ? html`<section>${sectionTitle('Most played')}<div class="game-grid" data-top-games>
                 ${top.map((g) => html`<a class="grid-game" href="${gamePath(g.game.id)}" data-link data-gid="${g.game.id}">
-                  ${gameCover(g.game.name, null, 72)}<span class="gg-name">${g.game.name}</span><span class="gg-count mono muted">${countNoun(g.count, 'play')}</span>
+                  ${gameCover(g.game.name, null, 72, { fill: true })}<span class="gg-name">${g.game.name}</span><span class="gg-count mono muted">${countNoun(g.count, 'play')}</span>
                 </a>`)}
               </div></section>`
             : ''}
@@ -441,11 +441,10 @@ async function hydrateTopGames(root: Element, plays: PlayRecord[]): Promise<void
     const cover = node.querySelector('.cover.ph');
     if (meta?.thumbnail && cover) {
       const img = document.createElement('img');
-      img.className = 'cover';
+      img.className = 'cover fill';
       img.src = meta.thumbnail;
       img.alt = meta.name;
-      img.width = 72;
-      img.height = 72;
+      img.loading = 'lazy';
       cover.replaceWith(img);
     }
   }

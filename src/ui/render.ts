@@ -50,11 +50,27 @@ export function avatar(url: string | undefined, alt: string, size = 40): SafeHtm
   return html`<img class="avatar" src="${url}" alt="${alt}" width="${size}" height="${size}" loading="lazy" />`;
 }
 
-/** A game cover/thumbnail; until BGG metadata loads, show the name snapshot (CC-5). */
-export function gameCover(name: string, meta: GameMetadata | null, size = 56): SafeHtml {
+/**
+ * A game cover/thumbnail; until BGG metadata loads, show the name snapshot (CC-5).
+ * `fill` mode drops the fixed pixel size and lets the cover fill its tile (the
+ * gallery grids), so a whole grid reads as uniform box art rather than tiny icons.
+ */
+export function gameCover(
+  name: string,
+  meta: GameMetadata | null,
+  size = 56,
+  opts: { fill?: boolean } = {},
+): SafeHtml {
   const src = meta?.thumbnail ?? meta?.image;
-  if (src) return html`<img class="cover" src="${src}" alt="${name}" width="${size}" height="${size}" loading="lazy" />`;
-  return html`<span class="cover ph" style="width:${size}px;height:${size}px" aria-hidden="true">${name.slice(0, 2)}</span>`;
+  const cls = opts.fill ? 'cover fill' : 'cover';
+  if (src) {
+    return opts.fill
+      ? html`<img class="${cls}" src="${src}" alt="${name}" loading="lazy" />`
+      : html`<img class="${cls}" src="${src}" alt="${name}" width="${size}" height="${size}" loading="lazy" />`;
+  }
+  return opts.fill
+    ? html`<span class="${cls} ph" aria-hidden="true">${name.slice(0, 2)}</span>`
+    : html`<span class="cover ph" style="width:${size}px;height:${size}px" aria-hidden="true">${name.slice(0, 2)}</span>`;
 }
 
 /** A grade badge, "8/10", in the sea-green secondary so it reads as a distinct signal. */
