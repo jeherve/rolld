@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Client } from '@atcute/client';
 import { isUnverifiedHandle, resolveMiniDoc } from '../src/read/identity.js';
-import { getProfiles } from '../src/read/bsky.js';
+import { getProfiles, searchActors } from '../src/read/bsky.js';
 import { playsToFeedItems } from '../src/read/friends.js';
 import { gameTargetUrl } from '../src/links.js';
 import type { PlayRecord } from '../src/records/types.js';
@@ -80,5 +80,42 @@ describe('getProfiles — batched, chunked, fault-tolerant', () => {
       throw new Error('appview unavailable');
     });
     await expect(getProfiles(client, ['did:plc:a', 'did:plc:b'])).resolves.toEqual([]);
+  });
+});
+
+/* ---- player-tag typeahead (D-56) ---- */
+
+const fakeTypeahead = (impl: (q: string) => unknown): Client =>
+  ({ get: (_nsid: string, opts: { params: { q: string } }) => impl(opts.params.q) }) as unknown as Client;
+
+describe('searchActors — network-wide handle typeahead (D-56)', () => {
+  it('maps actors to suggestions, keeping displayName/avatar optional', async () => {
+    const client = fakeTypeahead(() => ({
+      ok: true,
+      data: {
+        actors: [
+          { did: 'did:plc:a', handle: 'alice.bsky.social', displayName: 'Alice', avatar: 'https://x/a.png' },
+          { did: 'did:plc:b', handle: 'bob.test' },
+        ],
+      },
+    }));
+    await expect(searchActors('al', { client })).resolves.toEqual([
+      { did: 'did:plc:a', handle: 'alice.bsky.social', displayName: 'Alice', avatar: 'https://x/a.png' },
+      { did: 'did:plc:b', handle: 'bob.test' },
+    ]);
+  });
+
+  it('skips the request entirely for a blank query', async () => {
+    const client = fakeTypeahead(() => {
+      throw new Error('should not be called');
+    });
+    await expect(searchActors('   ', { client })).resolves.toEqual([]);
+  });
+
+  it('degrades to empty on failure, so the name field still works as free text (D-15)', async () => {
+    const client = fakeTypeahead(() => {
+      throw new Error('typeahead down');
+    });
+    await expect(searchActors('alice', { client })).resolves.toEqual([]);
   });
 });

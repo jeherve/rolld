@@ -782,11 +782,47 @@ label.mono {
   text-decoration: underline;
   cursor: pointer;
 }
+.player-entry {
+  margin-bottom: 0.6rem;
+}
 .player-row {
   display: grid;
   grid-template-columns: 1fr 80px auto;
   gap: 0.4rem;
   align-items: center;
+}
+.player-row .text-input {
+  margin: 0;
+}
+/* The handle typeahead floats over what follows so it never grows the row (D-56). */
+.player-name {
+  position: relative;
+}
+.player-name .typeahead {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+}
+.ta-actor {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ta-actor .avatar {
+  width: 22px;
+  height: 22px;
+}
+.ta-actor-name {
+  font-weight: 500;
+}
+.ta-actor .muted {
+  margin-left: auto;
+}
+.player-tag {
+  color: var(--accent-2);
+  margin: 0.2rem 0 0;
 }
 .grade-picker {
   display: grid;
