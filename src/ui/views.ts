@@ -319,7 +319,6 @@ function gamePageView(
         <a href="${youtube}" target="_blank" rel="noopener noreferrer">Search this game on YouTube${externalMark}</a>
         <a href="${bggUrl}" target="_blank" rel="noopener noreferrer">View on BoardGameGeek${externalMark}</a>
       </div>
-      <p class="bgg-credit muted mono small">Game data from BoardGameGeek.</p>
       ${ctx.state.session ? '' : signInPrompt(ctx, 'Track your own games on rolld.')}
     </article>
   `;
