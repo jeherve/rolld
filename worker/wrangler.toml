@@ -7,9 +7,15 @@ main = "src/index.ts"
 compatibility_date = "2026-01-01"
 workers_dev = true
 
-# Production route: serve under the app origin so the SPA calls same-origin /api/*.
-# Maintainer enables this once the rolld.at zone is on Cloudflare:
-# routes = [{ pattern = "rolld.at/api/*", zone_name = "rolld.at" }]
+# Production route: every Worker path lives under /api/*, so one same-origin route
+# serves all of it — game metadata, search, the moderation check, the blob proxy, the
+# Constellation cache, AND the per-user RSS feed (D-42, now /api/@<handle>/feed.xml).
+# A mid-path wildcard (`/*/feed.xml`) is not an expressible route, so the feed was
+# namespaced under /api/ rather than split into a second route (D-54). Worker routes
+# take precedence over the Pages site for matching paths.
+routes = [
+  { pattern = "rolld.at/api/*", zone_name = "rolld.at" },
+]
 
 # KV cache: `bgg:<id>` (permanent game metadata) + `search:<q>` (short-TTL queries).
 # Also holds `cx:<target>` (Constellation) + the moderation blocklist.
@@ -17,7 +23,7 @@ workers_dev = true
 #   wrangler kv namespace create BGG_CACHE
 [[kv_namespaces]]
 binding = "BGG_CACHE"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "99584ae6c1d54c9393eefc9936b45b11"
 
 # The BGG bearer token is a SECRET, never in this file or the repo (D-31):
 #   wrangler secret put BGG_TOKEN

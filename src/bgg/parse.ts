@@ -36,8 +36,15 @@ function asArray<T>(v: T | T[] | undefined): T[] {
   return Array.isArray(v) ? v : [v];
 }
 
-/** A handful of named HTML entities BGG leaves in `<description>` after XML decoding. */
+/**
+ * Named HTML entities BGG leaves in `<description>` after XML decoding. Scoped to
+ * what a board-game corpus actually contains: markup + typographic punctuation,
+ * currency and fractions (prices in game descriptions), and the Latin-1 accented
+ * letters that pepper European designer names and titles (Knizia, Kühn, Feld…).
+ * Unknown `&…;` sequences are left untouched (see decodeEntities).
+ */
 const NAMED_ENTITIES: Record<string, string> = {
+  // Markup + typographic.
   amp: '&',
   lt: '<',
   gt: '>',
@@ -51,11 +58,77 @@ const NAMED_ENTITIES: Record<string, string> = {
   rdquo: '”',
   ldquo: '“',
   hellip: '…',
+  bull: '•',
+  middot: '·',
+  laquo: '«',
+  raquo: '»',
+  sect: '§',
+  para: '¶',
+  dagger: '†',
+  Dagger: '‡',
+  prime: '′',
+  Prime: '″',
   trade: '™',
   copy: '©',
   reg: '®',
   deg: '°',
+  // Currency + math (prices and player counts show up in descriptions).
+  pound: '£',
+  euro: '€',
+  cent: '¢',
+  yen: '¥',
+  times: '×',
+  divide: '÷',
+  minus: '−',
+  plusmn: '±',
+  frac12: '½',
+  frac14: '¼',
+  frac34: '¾',
+  // Latin-1 accented letters — European designer names and game titles.
+  agrave: 'à',
+  aacute: 'á',
+  acirc: 'â',
+  atilde: 'ã',
+  auml: 'ä',
+  aring: 'å',
+  aelig: 'æ',
+  ccedil: 'ç',
+  egrave: 'è',
   eacute: 'é',
+  ecirc: 'ê',
+  euml: 'ë',
+  igrave: 'ì',
+  iacute: 'í',
+  icirc: 'î',
+  iuml: 'ï',
+  ntilde: 'ñ',
+  ograve: 'ò',
+  oacute: 'ó',
+  ocirc: 'ô',
+  otilde: 'õ',
+  ouml: 'ö',
+  oslash: 'ø',
+  ugrave: 'ù',
+  uacute: 'ú',
+  ucirc: 'û',
+  uuml: 'ü',
+  yacute: 'ý',
+  szlig: 'ß',
+  Agrave: 'À',
+  Aacute: 'Á',
+  Auml: 'Ä',
+  Aring: 'Å',
+  AElig: 'Æ',
+  Ccedil: 'Ç',
+  Egrave: 'È',
+  Eacute: 'É',
+  Iacute: 'Í',
+  Ntilde: 'Ñ',
+  Oacute: 'Ó',
+  Ouml: 'Ö',
+  Oslash: 'Ø',
+  Uacute: 'Ú',
+  Uuml: 'Ü',
 };
 
 /**
@@ -94,7 +167,7 @@ function primaryName(names: XmlAttr[]): string | undefined {
 }
 
 function linkValues(links: XmlAttr[], type: string): string[] {
-  return links.filter((l) => l.type === type && l.value).map((l) => l.value!);
+  return links.filter((l) => l.type === type && l.value).map((l) => decodeEntities(l.value!));
 }
 
 function parseItem(item: XmlNode, fetchedAt: string): GameMetadata {
@@ -116,7 +189,7 @@ function parseItem(item: XmlNode, fetchedAt: string): GameMetadata {
 
   const meta: GameMetadata = {
     id,
-    name: primaryName(names) ?? '',
+    name: decodeEntities(primaryName(names) ?? ''),
     fetchedAt,
   };
   const year = attrNumber(item.yearpublished);
@@ -181,7 +254,7 @@ export function parseSearch(xml: string): SearchCandidate[] {
     const name = primaryName(names);
     if (!name) continue;
     seen.add(id);
-    const candidate: SearchCandidate = { id, name };
+    const candidate: SearchCandidate = { id, name: decodeEntities(name) };
     const year = attrNumber(item.yearpublished);
     if (year !== undefined) candidate.yearPublished = year;
     out.push(candidate);

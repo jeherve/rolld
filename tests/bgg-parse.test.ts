@@ -63,6 +63,20 @@ describe('parseThing', () => {
     expect(() => parseThing('<items></items>', 'now')).toThrow(/no <item>/);
   });
 
+  it('decodes double-encoded entities in the name and link labels', () => {
+    // Regression: BGG double-encodes (`&amp;#039;` → `&#039;` after XML parse), so the
+    // name/link decode pass must run too — not just the description. Real cases:
+    // "Collector's Edition", the "Children's Game" category, "Print & Play".
+    const xml = `<items><item type="boardgame" id="7"><name type="primary" value="Collector&amp;#039;s Caf&amp;eacute;"/>
+      <link type="boardgamecategory" value="Children&amp;#039;s Game"/>
+      <link type="boardgamemechanic" value="Print &amp;amp; Play"/>
+    </item></items>`;
+    const m = parseThing(xml, 'now');
+    expect(m.name).toBe("Collector's Café");
+    expect(m.categories).toEqual(["Children's Game"]);
+    expect(m.mechanics).toEqual(['Print & Play']);
+  });
+
   it('omits weight when averageweight is 0 (unrated game)', () => {
     const xml = `<items><item type="boardgame" id="9"><name type="primary" value="Obscure"/>
       <statistics><ratings><averageweight value="0"/><bayesaverage value="0"/></ratings></statistics>
@@ -93,6 +107,18 @@ describe('parseSearch', () => {
     expect(starfarers.yearPublished).toBeUndefined();
   });
 
+  it('decodes double-encoded entities in candidate names', () => {
+    // Regression: live search returned "Catan 3D Collector&#039;s Edition" verbatim.
+    const xml = `<items total="1"><item type="boardgame" id="17419">
+      <name type="primary" value="Catan 3D Collector&amp;#039;s Edition"/>
+      <yearpublished value="2005"/></item></items>`;
+    expect(parseSearch(xml)[0]).toEqual({
+      id: '17419',
+      name: "Catan 3D Collector's Edition",
+      yearPublished: 2005,
+    });
+  });
+
   it('returns [] for a no-results response', () => {
     expect(parseSearch('<items total="0"></items>')).toEqual([]);
   });
@@ -104,6 +130,16 @@ describe('decodeEntities', () => {
     expect(decodeEntities('&#x2014;')).toBe('—');
     expect(decodeEntities('tea &amp; cake')).toBe('tea & cake');
     expect(decodeEntities('don&rsquo;t')).toBe('don’t');
+  });
+
+  it('decodes currency, fractions, and accented Latin letters (European titles/designers)', () => {
+    // Regression: a real BGG description (Brass: Birmingham) left `&pound;` visible.
+    expect(decodeEntities('take a &pound;30 loan')).toBe('take a £30 loan');
+    expect(decodeEntities('&euro;5 / &frac12; point')).toBe('€5 / ½ point');
+    expect(decodeEntities('Reiner Knizia, Stefan Feld, K&uuml;hn')).toBe(
+      'Reiner Knizia, Stefan Feld, Kühn',
+    );
+    expect(decodeEntities('caf&eacute; &middot; &ccedil;a')).toBe('café · ça');
   });
 
   it('leaves unknown entities untouched', () => {

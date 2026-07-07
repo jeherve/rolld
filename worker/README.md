@@ -13,7 +13,12 @@ browser calls this Worker; it never calls BGG and never sees the token.
 | `GET /api/game/<bggId>` | One game's metadata. Cache-first (`bgg:<id>`, permanent). |
 | `GET /api/games?ids=1,2,3` | Batch hydrate (≤20/BGG call) for feeds + grids. |
 | `GET /api/search?q=<query>` | Name → candidates. Short-TTL cache (`search:<q>`, 1h). |
+| `GET /api/@<handle>/feed.xml` | Per-user RSS feed (D-42; `/api/did/<did>/feed.xml` fallback). |
 | `GET /api/health` | Liveness. |
+
+All routes live under `/api/*` so a single same-origin Worker route (`rolld.at/api/*`)
+serves them — including the RSS feed, which sits under `/api/` because a mid-path
+wildcard route (`/*/feed.xml`) is not expressible (D-54).
 
 The Worker also serves the per-user RSS feed (D-42), caches Constellation
 responses (`cx:<target>`), and enforces the moderation blocklist (D-41).

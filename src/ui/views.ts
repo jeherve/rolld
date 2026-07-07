@@ -406,7 +406,7 @@ function profileView(
       <p class="mono muted small">
         ${countNoun(summary.totalPlays, 'play')} · ${countNoun(summary.distinctGames, 'game')}
         · <a href="${playsPath(handle)}" data-link>full log</a>
-        · <a href="${ORIGIN}/@${handle}/feed.xml" target="_blank" rel="noopener noreferrer">RSS</a>
+        · <a href="${ORIGIN}/api/@${handle}/feed.xml" target="_blank" rel="noopener noreferrer">RSS</a>
       </p>
     </header>
 
