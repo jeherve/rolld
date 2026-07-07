@@ -10,12 +10,28 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_LONG = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
-/** "12 Jun 2026" — the calendar form used once a play is more than a week old. */
+/** "12 Jun 2026" — the compact calendar form used in feeds and lists. */
 export function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+/**
+ * "12 June 2026" — the roomier form for a single entry page, where the date is a
+ * sentence ("played on 12 June 2026"), not a table cell. Uses the full month name
+ * so it reads like prose. Always UTC, so the same play reads the same date for
+ * everyone (it's not tied to the reader's clock).
+ */
+export function formatDateLong(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
 /** Relative time for fresh activity, falling back to the date for older plays. */
