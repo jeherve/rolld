@@ -26,7 +26,7 @@ import {
 import { buildFriendsFeed } from '../read/friends.js';
 import { resolveMiniDoc } from '../read/identity.js';
 import { renderMarkdown } from '../read/markdown-render.js';
-import { getRecordValue, listPlays, listRatings, pdsClient } from '../read/repo.js';
+import { getRecordValue, listAllPlays, listAllRatings, pdsClient } from '../read/repo.js';
 import { subscribeToPlays } from '../read/spacedust.js';
 import { mostPlayed, playSummary, timesPlayed, topRated } from '../stats/personal.js';
 import type { PageCtx } from './context.js';
@@ -373,8 +373,8 @@ export function profile(ctx: PageCtx, handle: string): void {
     }
     const [bio, plays, ratings] = await Promise.all([
       getProfile(appview, doc.did),
-      listPlays(pdsClient(doc.pds), doc.did, { limit: 100 }).then((p) => p.records).catch(() => []),
-      listRatings(pdsClient(doc.pds), doc.did, { limit: 100 }).then((p) => p.records).catch(() => []),
+      listAllPlays(pdsClient(doc.pds), doc.did).catch(() => []),
+      listAllRatings(pdsClient(doc.pds), doc.did).catch(() => []),
     ]);
     const declared = await getRecordValue<ProfileRecord>(pdsClient(doc.pds), doc.did, COLLECTION.profile, PROFILE_RKEY);
     render(el, profileView(doc.handle, bio, plays.map((r) => r.value), ratings.map((r) => r.value), Boolean(declared)));
@@ -462,7 +462,7 @@ export function playLog(ctx: PageCtx, handle: string): void {
       render(el, emptyState({ motif: '🧭', title: "We couldn't find that handle" }));
       return;
     }
-    const plays = (await listPlays(pdsClient(doc.pds), doc.did, { limit: 100 })).records;
+    const plays = await listAllPlays(pdsClient(doc.pds), doc.did);
     if (plays.length === 0) {
       render(el, html`<h1>@${doc.handle}'s plays</h1>${emptyState({ title: 'No plays yet', body: 'When they log a game, it shows up here.' })}`);
       return;
@@ -596,7 +596,7 @@ export function userGame(ctx: PageCtx, handle: string, bggId: string): void {
     }
     const client = pdsClient(doc.pds);
     const [plays, rating, meta] = await Promise.all([
-      listPlays(client, doc.did, { limit: 100 }).then((p) => p.records.filter((r) => r.value.game.id === bggId)),
+      listAllPlays(client, doc.did).then((records) => records.filter((r) => r.value.game.id === bggId)),
       getRecordValue<RatingRecord>(client, doc.did, COLLECTION.rating, bggId),
       resolveGame(bggId),
     ]);
