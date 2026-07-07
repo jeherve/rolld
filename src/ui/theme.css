@@ -570,6 +570,18 @@ label.mono {
   font-size: 0.85rem;
   margin: 1rem 0;
 }
+.linkouts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  width: fit-content;
+}
+.external-icon {
+  width: 0.85em;
+  height: 0.85em;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
 .bgg-credit {
   font-size: 0.72rem;
 }
