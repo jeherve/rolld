@@ -1,6 +1,8 @@
 node_modules/
 dist/
 *.local
+.dev.vars
+.dev.vars.*
 .DS_Store
 .vite/
 .wrangler/
