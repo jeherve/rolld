@@ -2,23 +2,27 @@
  * The friends-feed assembly (D-26) — the serverless version of a social feed.
  * Constellation can't do "recent across users" (D-2), so we build it client-side:
  *   1. read the user's Bluesky follows;
- *   2. keep only those with a rolld `profile` record (D-25) — the cheap declaration
- *      filter that avoids probing every follow's repo blindly;
- *   3. list each one's recent plays (Slingshot resolves identity + PDS; enumeration
- *      hits the PDS, D-23);
- *   4. merge with the user's own plays (the pure, tested `mergeFeed`).
+ *   2. list each follow's recent plays directly (Slingshot resolves identity + PDS;
+ *      enumeration hits the PDS, D-23) — a non-participant simply has none;
+ *   3. merge with the user's own plays (the pure, tested `mergeFeed`).
+ *
+ * We do NOT pre-filter follows by a `profile` record. `writePlay` always writes the
+ * declaration (D-25), so *having plays implies having a profile* — and `listRecords`
+ * on a non-participant's (empty) collection returns `200 {records:[]}`, whereas a
+ * `getRecord` probe for the missing `profile/self` returns `400 RecordNotFound` on
+ * every non-participant. Skipping that probe drops one call per follow and the 400
+ * noise it produced, for the identical feed.
  *
  * The follow set is CAPPED (D-26) to bound cost; per-follow failures degrade to
  * "skip that follow", never break the feed. Spacedust live prepend is layered on
  * top later (the enhancement, added last).
  */
 import { Client } from '@atcute/client';
-import { COLLECTION, PROFILE_RKEY } from '../config.js';
-import type { PlayRecord, ProfileRecord } from '../records/types.js';
+import type { PlayRecord } from '../records/types.js';
 import { appviewClient, getFollows } from './bsky.js';
 import { mergeFeed, type FeedItem } from './feed.js';
 import { resolveMiniDoc, type IdentityOptions } from './identity.js';
-import { getRecordValue, listPlays, pdsClient, type RepoRecord } from './repo.js';
+import { listPlays, pdsClient, type RepoRecord } from './repo.js';
 
 /** Map a repo's play records to feed items for one author (pure — unit-tested). */
 export function playsToFeedItems(
@@ -80,21 +84,14 @@ export async function buildFriendsFeed(
     follows = [];
   }
 
-  // 3. Per follow: resolve PDS, require the rolld declaration, list recent plays.
+  // 3. Per follow: resolve PDS, list recent plays. A non-participant lists empty and
+  //    contributes nothing — no separate profile probe needed (see the header note).
   const lists = await Promise.all(
     follows.slice(0, followCap).map(async (f): Promise<FeedItem[]> => {
       try {
         const doc = await resolveMiniDoc(f.did, identityOpts);
         if (!doc) return [];
-        const client = pdsClient(doc.pds);
-        const profile = await getRecordValue<ProfileRecord>(
-          client,
-          f.did,
-          COLLECTION.profile,
-          PROFILE_RKEY,
-        );
-        if (!profile) return []; // not a rolld user — skip (the D-25 filter)
-        const plays = await listPlays(client, f.did, { limit: playsPerFollow });
+        const plays = await listPlays(pdsClient(doc.pds), f.did, { limit: playsPerFollow });
         return playsToFeedItems(f.did, plays.records, false);
       } catch {
         return [];
