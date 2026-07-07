@@ -33,6 +33,7 @@ import type { PageCtx } from './context.js';
 import { feedCard, type FeedAuthor } from './feedCard.js';
 import { countNoun, formatDate, relativeTime } from './format.js';
 import { html, raw, render, type SafeHtml } from './html.js';
+import { externalMark } from './icons.js';
 import { renderLanding } from './landing.js';
 import { openLogFlow, openRateFlow } from './flows.js';
 import { avatar, gameCover, gradeBadge, playPhotos, reportLink, sectionTitle } from './render.js';
@@ -315,8 +316,8 @@ function gamePageView(
         : ''}
 
       <div class="linkouts mono">
-        <a href="${youtube}" target="_blank" rel="noopener noreferrer">Search this game on YouTube</a>
-        <a href="${bggUrl}" target="_blank" rel="noopener noreferrer">View on BoardGameGeek</a>
+        <a href="${youtube}" target="_blank" rel="noopener noreferrer">Search this game on YouTube${externalMark}</a>
+        <a href="${bggUrl}" target="_blank" rel="noopener noreferrer">View on BoardGameGeek${externalMark}</a>
       </div>
       <p class="bgg-credit muted mono small">Game data from BoardGameGeek.</p>
       ${ctx.state.session ? '' : signInPrompt(ctx, 'Track your own games on rolld.')}
