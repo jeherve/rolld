@@ -735,7 +735,7 @@ export function about(ctx: PageCtx): void {
         </p>
         <p class="mono muted">
           Game data from BoardGameGeek. Built by
-          <a href="https://bsky.app/profile/jeremy.herve.bzh" target="_blank" rel="noopener noreferrer">Jeremy Herve</a>.
+          <a href="https://jeremy.herve.bzh" target="_blank" rel="noopener noreferrer">Jeremy Herve</a>.
         </p>
       </article>
     `),
