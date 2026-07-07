@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   countNoun,
   formatDate,
+  formatDateLong,
   formatRating,
   hasReportableContent,
   playersSummary,
@@ -34,6 +35,20 @@ describe('relativeTime', () => {
 describe('formatDate', () => {
   it('formats a calendar date', () => {
     expect(formatDate('2026-06-12T00:00:00Z')).toBe('12 Jun 2026');
+  });
+});
+
+describe('formatDateLong', () => {
+  it('spells the month out for the roomier entry-page form', () => {
+    expect(formatDateLong('2026-05-17T12:00:00Z')).toBe('17 May 2026');
+    expect(formatDateLong('2026-09-03T00:00:00Z')).toBe('3 September 2026');
+  });
+  it('is always UTC, so a play reads the same date for everyone', () => {
+    // 23:30 UTC is still the 31st in UTC, whatever the reader's timezone.
+    expect(formatDateLong('2026-12-31T23:30:00Z')).toBe('31 December 2026');
+  });
+  it('returns empty for an unparseable date', () => {
+    expect(formatDateLong('not-a-date')).toBe('');
   });
 });
 

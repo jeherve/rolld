@@ -10,11 +10,13 @@ import { uploadAndEmbed } from '../atproto/blob.js';
 import { writePlay, writeRating } from '../atproto/records.js';
 import { searchGames } from '../bgg/resolveGame.js';
 import { entryUrl, gamePath } from '../links.js';
+import { searchActors, type ActorSuggestion } from '../read/bsky.js';
 import type { GameRef, ImageEmbed, Player } from '../records/types.js';
 import { createCompanionPost, defaultShareText } from '../share/bsky.js';
 import { graphemesRemaining } from '../text/graphemes.js';
 import type { PageCtx } from './context.js';
 import { html, render, type SafeHtml } from './html.js';
+import { avatar } from './render.js';
 
 /* ---- bottom-sheet shell ------------------------------------------------------ */
 
@@ -182,32 +184,32 @@ export function openLogFlow(ctx: PageCtx, prefill?: GameRef): void {
 
   const players: Player[] = [];
   const playersEl = sheet.body.querySelector<HTMLElement>('#players')!;
-  const renderPlayers = (): void => {
+  // Rows are appended, not re-rendered, so each one keeps its typed value and any
+  // "tagged @handle" state when another player is added.
+  const addPlayerRow = (): void => {
+    const player: Player = { displayName: '' };
+    players.push(player);
+    const i = players.length - 1;
+    const entry = document.createElement('div');
+    entry.className = 'player-entry';
+    entry.dataset.i = String(i);
     render(
-      playersEl,
-      html`${players.map(
-        (p, i) => html`<div class="player-row mono" data-i="${i}">
-          <input class="text-input" data-name placeholder="name" value="${p.displayName ?? ''}" />
-          <input class="text-input score" data-score type="number" placeholder="score" value="${p.score ?? ''}" />
+      entry,
+      html`<div class="player-row mono">
+          <div class="player-name">
+            <input class="text-input" data-name placeholder="name" autocomplete="off" autocapitalize="off" spellcheck="false" />
+            <div class="typeahead" data-presults></div>
+          </div>
+          <input class="text-input score" data-score type="number" placeholder="score" />
           <label><input type="checkbox" data-winner /> won</label>
-        </div>`,
-      )}`,
+        </div>
+        <p class="player-tag mono small" data-tag hidden></p>`,
     );
-    for (const row of playersEl.querySelectorAll<HTMLElement>('.player-row')) {
-      const i = Number(row.dataset.i);
-      row.querySelector<HTMLInputElement>('[data-name]')!.addEventListener('input', (e) => {
-        players[i]!.displayName = (e.target as HTMLInputElement).value;
-      });
-      row.querySelector<HTMLInputElement>('[data-score]')!.addEventListener('input', (e) => {
-        const v = (e.target as HTMLInputElement).value;
-        players[i]!.score = v ? Number(v) : undefined;
-      });
-    }
+    playersEl.appendChild(entry);
+    wirePlayerRow(entry, player);
+    entry.querySelector<HTMLInputElement>('[data-name]')!.focus();
   };
-  sheet.body.querySelector('[data-add-player]')!.addEventListener('click', () => {
-    players.push({ displayName: '' });
-    renderPlayers();
-  });
+  sheet.body.querySelector('[data-add-player]')!.addEventListener('click', addPlayerRow);
 
   // Per-photo alt text (D-33: alt is required) appears as files are chosen.
   const photoInput = sheet.body.querySelector<HTMLInputElement>('#photos')!;
@@ -238,13 +240,18 @@ export function openLogFlow(ctx: PageCtx, prefill?: GameRef): void {
     void (async () => {
       try {
         const images = await collectPhotos(session.agent, sheet.body);
-        const winnerNames = players.filter((p) => winnerChecked(playersEl, players.indexOf(p))).map((p) => p.displayName!).filter(Boolean);
+        // A tagged winner is recorded by DID (links to their profile); an untyped
+        // one by name. Both are honoured (winnerSummary reads either).
+        const winners = players.filter((_, i) => winnerChecked(playersEl, i));
+        const winnerDids = winners.filter((p) => p.did).map((p) => p.did!);
+        const winnerNames = winners.filter((p) => !p.did && p.displayName?.trim()).map((p) => p.displayName!);
         const filledPlayers = players.filter((p) => p.displayName?.trim());
         const note = fd.get('note')?.toString() ?? '';
         const written = await writePlay(session.agent, {
           game: game!,
           playedAt: new Date(`${fd.get('when')}T12:00:00Z`).toISOString(),
           ...(filledPlayers.length ? { players: filledPlayers } : {}),
+          ...(winnerDids.length ? { winnerDids } : {}),
           ...(winnerNames.length ? { winnerNames } : {}),
           ...(fd.get('loc')?.toString().trim() ? { location: fd.get('loc')!.toString() } : {}),
           ...(fd.get('dur') ? { durationMinutes: Number(fd.get('dur')) } : {}),
@@ -272,8 +279,82 @@ export function openLogFlow(ctx: PageCtx, prefill?: GameRef): void {
 
 function winnerChecked(playersEl: HTMLElement, i: number): boolean {
   return Boolean(
-    playersEl.querySelector<HTMLInputElement>(`.player-row[data-i="${i}"] [data-winner]`)?.checked,
+    playersEl.querySelector<HTMLInputElement>(`.player-entry[data-i="${i}"] [data-winner]`)?.checked,
   );
+}
+
+/**
+ * Wire one player row (D-56): a free-text name field with a network-wide handle
+ * typeahead over it. Typing searches the whole atproto network; picking a result
+ * tags the co-player by DID so their name links to a real profile later, while a
+ * plain typed name still works for someone who isn't on the network (D-15). Editing
+ * the field after tagging drops back to free text.
+ */
+function wirePlayerRow(entry: HTMLElement, player: Player): void {
+  const nameInput = entry.querySelector<HTMLInputElement>('[data-name]')!;
+  const results = entry.querySelector<HTMLElement>('[data-presults]')!;
+  const scoreInput = entry.querySelector<HTMLInputElement>('[data-score]')!;
+  const tag = entry.querySelector<HTMLElement>('[data-tag]')!;
+
+  const setTag = (handle?: string): void => {
+    tag.textContent = handle ? `✓ tagged @${handle}` : '';
+    tag.hidden = !handle;
+  };
+  const choose = (s: ActorSuggestion): void => {
+    player.did = s.did;
+    player.displayName = s.displayName ?? s.handle;
+    nameInput.value = player.displayName;
+    results.replaceChildren();
+    setTag(s.handle);
+  };
+
+  scoreInput.addEventListener('input', () => {
+    const v = scoreInput.value;
+    player.score = v ? Number(v) : undefined;
+  });
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  nameInput.addEventListener('input', () => {
+    // A manual edit means this is free text again — drop any DID tag from a pick.
+    player.displayName = nameInput.value;
+    if (player.did) {
+      delete player.did;
+      setTag();
+    }
+    clearTimeout(timer);
+    const q = nameInput.value.trim();
+    if (q.length < 2) {
+      results.replaceChildren();
+      return;
+    }
+    // Debounced ~250ms so a fast typist doesn't fire a request per keystroke.
+    timer = setTimeout(() => {
+      void searchActors(q)
+        .then((actors) => {
+          if (nameInput.value.trim() !== q) return; // a newer keystroke won the race
+          render(
+            results,
+            html`${actors.map(
+              (a) => html`<button type="button" class="ta-item ta-actor" data-did="${a.did}" data-handle="${a.handle}" data-name="${a.displayName ?? ''}">
+                ${avatar(a.avatar, a.handle, 22)}
+                <span class="ta-actor-name">${a.displayName ?? `@${a.handle}`}</span>
+                <span class="muted mono">@${a.handle}</span>
+              </button>`,
+            )}`,
+          );
+          for (const item of results.querySelectorAll<HTMLButtonElement>('.ta-actor')) {
+            item.addEventListener('click', () =>
+              choose({
+                did: item.dataset.did!,
+                handle: item.dataset.handle!,
+                ...(item.dataset.name ? { displayName: item.dataset.name } : {}),
+              }),
+            );
+          }
+        })
+        .catch(() => results.replaceChildren());
+    }, 250);
+  });
 }
 
 async function collectPhotos(agent: Parameters<typeof writePlay>[0], body: HTMLElement): Promise<ImageEmbed[]> {

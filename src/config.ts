@@ -58,6 +58,15 @@ export const SPACEDUST_BASE = 'wss://spacedust.microcosm.blue';
 export const APPVIEW_API = 'https://public.api.bsky.app';
 
 /**
+ * Handle typeahead host for the player-tagging autocomplete (D-56). Speaks the
+ * same `app.bsky.actor.searchActorsTypeahead` XRPC as the AppView, but searches
+ * the *whole* network rather than one platform's curated user list — so you can
+ * tag a co-player whoever's PDS they're on. Kept separate from `APPVIEW_API` so
+ * the destination is a one-line swap.
+ */
+export const TYPEAHEAD_API = 'https://typeahead.waow.tech';
+
+/**
  * AppView *web* host — where human-facing "view / reply on the Atmosphere" links
  * land. Kept separate from the API host so the read backend and the click-through
  * can differ, and so swapping the destination is a one-line change (D-51).

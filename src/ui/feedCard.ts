@@ -51,7 +51,7 @@ export function feedCard(data: FeedCardData, now: number = Date.now()): SafeHtml
         <span class="when mono muted">${relativeTime(play.playedAt, now)}</span>
       </div>
       <a class="fc-game" href="/g/${play.game.id}" data-link>
-        ${gameCover(name, meta ?? null, 56)}
+        ${gameCover(name, meta ?? null, 84)}
         <span class="g-name">${name}${play.game.yearPublished ? html` <span class="muted">(${play.game.yearPublished})</span>` : ''}</span>
       </a>
       ${metaParts.length

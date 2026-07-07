@@ -9,10 +9,48 @@
 import './../atproto/register.js';
 import { Client, ok, simpleFetchHandler } from '@atcute/client';
 import type { ActorIdentifier, ResourceUri } from '@atcute/lexicons/syntax';
-import { APPVIEW_API } from '../config.js';
+import { APPVIEW_API, TYPEAHEAD_API } from '../config.js';
 
 export function appviewClient(base: string = APPVIEW_API): Client {
   return new Client({ handler: simpleFetchHandler({ service: base }) });
+}
+
+/** A candidate co-player surfaced by the handle typeahead (D-56). */
+export interface ActorSuggestion {
+  did: string;
+  handle: string;
+  displayName?: string;
+  avatar?: string;
+}
+
+/**
+ * Network-wide handle typeahead for tagging co-players (D-56). Backed by
+ * typeahead.waow.tech, which speaks `app.bsky.actor.searchActorsTypeahead` over
+ * the whole network. Best-effort: a failed lookup returns an empty list so the
+ * name field still works as free text (D-15 — a co-player can be a plain name).
+ */
+export async function searchActors(
+  q: string,
+  opts: { limit?: number; client?: Client } = {},
+): Promise<ActorSuggestion[]> {
+  const query = q.trim();
+  if (!query) return [];
+  const client = opts.client ?? appviewClient(TYPEAHEAD_API);
+  try {
+    const data = await ok(
+      client.get('app.bsky.actor.searchActorsTypeahead', {
+        params: { q: query, limit: opts.limit ?? 6 },
+      }),
+    );
+    return data.actors.map((a) => ({
+      did: a.did,
+      handle: a.handle,
+      ...(a.displayName ? { displayName: a.displayName } : {}),
+      ...(a.avatar ? { avatar: a.avatar } : {}),
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export interface BskyProfile {

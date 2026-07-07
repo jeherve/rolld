@@ -9,7 +9,7 @@ import { beginLogin, signOut } from '../auth/oauth.js';
 import { deleteProfile } from '../atproto/records.js';
 import { resolveGame, resolveGames, searchGames } from '../bgg/resolveGame.js';
 import type { GameMetadata } from '../bgg/types.js';
-import { COLLECTION, ORIGIN, PROFILE_RKEY } from '../config.js';
+import { APPVIEW_WEB, COLLECTION, ORIGIN, PROFILE_RKEY } from '../config.js';
 import { didEntryPath, entryPath, gamePath, gameTargetUrl, playsPath, profilePath } from '../links.js';
 import type { GameRef, PlayRecord, ProfileRecord, RatingRecord } from '../records/types.js';
 
@@ -31,11 +31,12 @@ import { subscribeToPlays } from '../read/spacedust.js';
 import { mostPlayed, playSummary, timesPlayed, topRated } from '../stats/personal.js';
 import type { PageCtx } from './context.js';
 import { feedCard, type FeedAuthor } from './feedCard.js';
-import { countNoun, formatDate, hasReportableContent, relativeTime } from './format.js';
+import { countNoun, formatDate, formatDateLong, hasReportableContent, relativeTime } from './format.js';
 import { html, raw, render, type SafeHtml } from './html.js';
 import { externalMark } from './icons.js';
 import { renderLanding } from './landing.js';
 import { openLogFlow, openRateFlow } from './flows.js';
+import { linkifyBio } from './richText.js';
 import { avatar, gameCover, gradeBadge, playPhotos, reportLink, sectionTitle } from './render.js';
 import { diceLoader, emptyState, errorState } from './states.js';
 
@@ -280,7 +281,7 @@ function gamePageView(
             ? html`<div class="facts mono muted">
                 ${meta.minPlayers ? html`${meta.minPlayers}–${meta.maxPlayers} players` : ''}
                 ${meta.minPlaytime ? html` · ${meta.minPlaytime}–${meta.maxPlaytime} min` : ''}
-                ${meta.weight ? html` · weight ${meta.weight.toFixed(1)}/5` : ''}
+                ${meta.weight ? html` · complexity ${meta.weight.toFixed(1)}/5` : ''}
                 ${meta.bggRating ? html` · BGG ${meta.bggRating.toFixed(1)}` : ''}
               </div>`
             : html`<p class="muted">We couldn't load this game's details right now.</p>`}
@@ -402,10 +403,11 @@ function profileView(
           <p class="muted mono">@${handle}</p>
         </div>
       </div>
-      ${bio?.description ? html`<p class="bio">${bio.description}</p>` : ''}
-      <p class="mono muted small">
+      ${bio?.description ? html`<p class="bio">${linkifyBio(bio.description)}</p>` : ''}
+      <p class="mono muted small profile-meta">
         ${countNoun(summary.totalPlays, 'play')} · ${countNoun(summary.distinctGames, 'game')}
         · <a href="${playsPath(handle)}" data-link>full log</a>
+        · <a href="${APPVIEW_WEB}/profile/${handle}" target="_blank" rel="noopener noreferrer">Bluesky${externalMark}</a>
         · <a href="${ORIGIN}/api/@${handle}/feed.xml" target="_blank" rel="noopener noreferrer">RSS</a>
       </p>
     </header>
@@ -416,7 +418,7 @@ function profileView(
           ${top.length
             ? html`<section>${sectionTitle('Most played')}<div class="game-grid" data-top-games>
                 ${top.map((g) => html`<a class="grid-game" href="${gamePath(g.game.id)}" data-link data-gid="${g.game.id}">
-                  ${gameCover(g.game.name, null, 72)}<span class="gg-name">${g.game.name}</span><span class="gg-count mono muted">${countNoun(g.count, 'play')}</span>
+                  ${gameCover(g.game.name, null, 72, { fill: true })}<span class="gg-name">${g.game.name}</span><span class="gg-count mono muted">${countNoun(g.count, 'play')}</span>
                 </a>`)}
               </div></section>`
             : ''}
@@ -441,11 +443,10 @@ async function hydrateTopGames(root: Element, plays: PlayRecord[]): Promise<void
     const cover = node.querySelector('.cover.ph');
     if (meta?.thumbnail && cover) {
       const img = document.createElement('img');
-      img.className = 'cover';
+      img.className = 'cover fill';
       img.src = meta.thumbnail;
       img.alt = meta.name;
-      img.width = 72;
-      img.height = 72;
+      img.loading = 'lazy';
       cover.replaceWith(img);
     }
   }
@@ -545,7 +546,7 @@ function entryView(
       <p class="mono muted">
         <a href="${profilePath(handle)}" data-link>@${handle}</a>
         ${kind === 'play'
-          ? html` played this ${value.playedAt ? formatDate(value.playedAt) : ''}`
+          ? html` played this on ${value.playedAt ? formatDateLong(value.playedAt) : ''}`
           : html` graded this ${value.rating ? gradeBadge(value.rating) : ''}`}
       </p>
       ${kind === 'play' ? playPhotos(value.images, did, true) : ''}
@@ -725,7 +726,7 @@ export function about(ctx: PageCtx): void {
           There's no big backend here. The social reads (who played what, how many times) come
           from Constellation, a public index of the whole network, so I don't run my own. The one
           piece of server is a small worker that fetches and caches game details from
-          BoardGameGeek, which is where the covers and weights come from.
+          BoardGameGeek, which is where the covers and complexity ratings come from.
         </p>
         <h2>Social when your people arrive</h2>
         <p>
