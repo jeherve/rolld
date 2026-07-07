@@ -563,8 +563,10 @@ JSON convention into a public standard others can build on without permission. T
 evolution rules — deliberately, and deliberately timed to when the shape is settled.
 
 ### D-42 — A per-user outbound RSS feed of plays/ratings, served by the Worker.
-rolld exposes a per-user activity feed as RSS at `rolld.at/@<handle>/feed.xml` (a
-`/did/<did>/feed.xml` fallback per D-14) — a chronological serialization of that user's plays
+rolld exposes a per-user activity feed as RSS at ~~`rolld.at/@<handle>/feed.xml` (a
+`/did/<did>/feed.xml` fallback per D-14)~~ **`rolld.at/api/@<handle>/feed.xml` (fallback
+`/api/did/<did>/feed.xml`) — the path moved under `/api/` per D-54** — a chronological
+serialization of that user's plays
 and ratings. Why it matters (ethos, not features): this is a fourth open lens on data the
 user already owns, alongside the rendered page, the atproto records, and the Bluesky companion
 post — squarely in the "your activity, many surfaces, no lock-in" spirit (D-32) and the
@@ -747,3 +749,25 @@ being one scroll below the data it credits is a fine trade for never having to r
 it to a new view. Cost accepted: the credit shows on the handful of pages that carry no BGG data
 at all (login, error states) — harmless, and the norm for "Powered by" footers. If BGG later
 tightens the rule to "on the data view itself," this becomes a game-page placement instead.
+
+### D-54 — The RSS feed lives under `/api/`, so one Worker route serves every server path.
+Everything the Worker serves — game metadata, search, the moderation check, the blob proxy,
+the Constellation cache — already sat under `/api/*`, so a single production route
+(`rolld.at/api/*`) puts the whole Worker on the app origin next to the Pages SPA (Worker
+routes win over Pages for matching paths). The one exception was the RSS feed (D-42), first
+designed at `rolld.at/@<handle>/feed.xml`, a path that shares the SPA's `/@<handle>` profile
+space and is distinguished only by its `/feed.xml` suffix. That can't be expressed as a Worker
+route: a route pattern's `*` is trailing-greedy (it matches to the end of the path), so
+`rolld.at/*/feed.xml` is rejected by the routes API, and `rolld.at/@*` would swallow every
+profile page and hand it to a Worker that has no profile view. The options were (a) a second
+server component (a Pages Function) to serve the pretty path, duplicating the feed logic and
+breaking the "one server component" line (D-3); (b) leave the feed on a `*.workers.dev` URL,
+off-origin and ugly; or (c) move the feed under `/api/`, where the existing route already
+reaches it. We took (c): the feed is now `rolld.at/api/@<handle>/feed.xml` (fallback
+`/api/did/<did>/feed.xml`). Why: it keeps rolld to exactly one server component and one
+production route, with nothing off-origin, for the price of a slightly less elegant URL on a
+surface humans rarely type. RSS is read by feed readers, not memorised. The human-facing
+play/rating/profile links are untouched; only the feed's own address and its `<atom:link
+rel="self">` moved. This supersedes the URL in D-42 (the feature is unchanged). Cost accepted:
+`/api/` leaks a whiff of plumbing into a user-visible URL, and any early shared feed link on
+the old path would break; acceptable pre-launch, before any such link exists.

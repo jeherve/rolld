@@ -268,9 +268,12 @@ export default {
         return json(request, await search(env, q), { cacheSeconds: SEARCH_TTL_SECONDS });
       }
 
-      // Per-user RSS feed (D-42): /@<handle>/feed.xml and /did/<did>/feed.xml.
+      // Per-user RSS feed (D-42): /api/@<handle>/feed.xml and /api/did/<did>/feed.xml.
+      // Namespaced under /api/ so the one same-origin Worker route (`rolld.at/api/*`)
+      // serves it — a mid-path wildcard route (`/*/feed.xml`) is not expressible (D-54).
       const feedMatch =
-        pathname.match(/^\/@([^/]+)\/feed\.xml$/) ?? pathname.match(/^\/did\/([^/]+)\/feed\.xml$/);
+        pathname.match(/^\/api\/@([^/]+)\/feed\.xml$/) ??
+        pathname.match(/^\/api\/did\/([^/]+)\/feed\.xml$/);
       if (feedMatch) {
         return await serveFeed(request, env, decodeURIComponent(feedMatch[1]!));
       }

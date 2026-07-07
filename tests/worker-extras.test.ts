@@ -32,7 +32,7 @@ describe('RSS serialization (D-42)', () => {
       title: 'me on rolld',
       link: 'https://rolld.at/@me',
       description: 'plays & ratings',
-      selfUrl: 'https://rolld.at/@me/feed.xml',
+      selfUrl: 'https://rolld.at/api/@me/feed.xml',
       items: [
         {
           title: 'Played Tea & Trade',
@@ -203,7 +203,7 @@ describe('worker moderation + feed routes', () => {
     });
   });
 
-  it('GET /@<handle>/feed.xml resolves, reads plays, and serializes RSS', async () => {
+  it('GET /api/@<handle>/feed.xml resolves, reads plays, and serializes RSS', async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const u = String(input);
       if (u.includes('resolveMiniDoc')) {
@@ -229,11 +229,21 @@ describe('worker moderation + feed routes', () => {
     });
     vi.stubGlobal('fetch', fetchImpl);
 
-    const res = await worker.fetch(new Request('https://rolld.at/@me.test/feed.xml'), env(fakeKv()));
+    const res = await worker.fetch(
+      new Request('https://rolld.at/api/@me.test/feed.xml'),
+      env(fakeKv()),
+    );
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toContain('application/rss+xml');
     const xml = await res.text();
     expect(xml).toContain('<title>Played Catan</title>');
     expect(xml).toContain('https://rolld.at/@me.test/play/3k');
+  });
+
+  it('does not serve the feed at the un-prefixed /@<handle>/feed.xml (D-54)', async () => {
+    // The feed moved under /api/ so one Worker route (`rolld.at/api/*`) serves it; the
+    // old mid-path form must 404 at the Worker so it can never masquerade as live.
+    const res = await worker.fetch(new Request('https://rolld.at/@me.test/feed.xml'), env(fakeKv()));
+    expect(res.status).toBe(404);
   });
 });

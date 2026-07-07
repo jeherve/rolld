@@ -94,7 +94,7 @@ export async function buildUserFeedXml(
     title: `${user.handle} on rolld`,
     link: `${ORIGIN}/@${user.handle}`,
     description: `Board game plays and ratings by ${user.handle}`,
-    selfUrl: `${ORIGIN}/@${user.handle}/feed.xml`,
+    selfUrl: `${ORIGIN}/api/@${user.handle}/feed.xml`,
     items,
   });
 }
