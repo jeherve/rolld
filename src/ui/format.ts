@@ -37,10 +37,10 @@ export function playerLabel(player: Player): string {
   return 'someone';
 }
 
-/** "with Alice and Bob", "with Alice, Bob and Cara", or "solo" when no one's tagged. */
-export function playersSummary(play: PlayRecord): string {
+/** "with Alice and Bob", "with Alice, Bob and Cara", or null when no one's tagged. */
+export function playersSummary(play: PlayRecord): string | null {
   const names = (play.players ?? []).map(playerLabel);
-  if (names.length === 0) return 'solo';
+  if (names.length === 0) return null;
   if (names.length === 1) return `with ${names[0]}`;
   if (names.length === 2) return `with ${names[0]} and ${names[1]}`;
   return `with ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;

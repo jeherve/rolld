@@ -38,6 +38,8 @@ export function feedCard(data: FeedCardData, now: number = Date.now()): SafeHtml
   const { play, author, meta, rkey } = data;
   const name = play.game.name;
   const winner = winnerSummary(play);
+  const players = playersSummary(play);
+  const metaParts = [players ? html`played ${players}` : null, winner].filter(Boolean);
   const displayName = author.displayName ?? `@${author.handle}`;
   return html`
     <article class="feed-card">
@@ -52,9 +54,9 @@ export function feedCard(data: FeedCardData, now: number = Date.now()): SafeHtml
         ${gameCover(name, meta ?? null, 56)}
         <span class="g-name">${name}${play.game.yearPublished ? html` <span class="muted">(${play.game.yearPublished})</span>` : ''}</span>
       </a>
-      <div class="fc-meta mono muted">
-        played ${playersSummary(play)}${winner ? html` · ${winner}` : ''}
-      </div>
+      ${metaParts.length
+        ? html`<div class="fc-meta mono muted">${metaParts.map((part, i) => html`${i ? ' · ' : ''}${part}`)}</div>`
+        : ''}
       ${noteSnippet(play)} ${playPhotos(play.images, author.did)}
       <div class="fc-foot">
         <a class="permalink mono" href="${entryPath(author.handle, 'play', rkey)}" data-link>view play</a>
