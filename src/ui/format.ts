@@ -4,7 +4,7 @@
  * the views stay about layout. The voice is plain and direct (design-system): "with
  * Alice and Bob", "solo", "8/10".
  */
-import type { Player, PlayRecord } from '../records/types.js';
+import type { ImageEmbed, NoteFields, Player, PlayRecord } from '../records/types.js';
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -44,6 +44,18 @@ export function playersSummary(play: PlayRecord): string | null {
   if (names.length === 1) return `with ${names[0]}`;
   if (names.length === 2) return `with ${names[0]} and ${names[1]}`;
   return `with ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/**
+ * True when a log carries user-authored content someone could actually report — a
+ * note (Markdown or plain text) or a photo (D-55). A play or rating that's only
+ * structured metadata (game, date, grade) has nothing to moderate, so the Report
+ * affordance is hidden on it rather than pointing at nothing.
+ */
+export function hasReportableContent(record: NoteFields & { images?: ImageEmbed[] }): boolean {
+  const hasNote = Boolean(record.content?.text.markdown.trim() || record.textContent?.trim());
+  const hasPhotos = Boolean(record.images?.length);
+  return hasNote || hasPhotos;
 }
 
 /** A grade as "8/10". */
