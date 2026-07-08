@@ -507,6 +507,15 @@ label.mono {
   background: var(--bg);
   flex: none;
 }
+/* Covers, avatars, banners, and play photos are photographs, not pixel art — undo
+   the global `image-rendering: pixelated` (which is for the logo) so they scale
+   smoothly instead of reading as blocky. */
+.cover,
+.avatar,
+.photo,
+.banner {
+  image-rendering: auto;
+}
 .avatar.ph,
 .cover.ph {
   display: inline-grid;

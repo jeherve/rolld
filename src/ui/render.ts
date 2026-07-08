@@ -61,7 +61,9 @@ export function gameCover(
   size = 56,
   opts: { fill?: boolean } = {},
 ): SafeHtml {
-  const src = meta?.thumbnail ?? meta?.image;
+  // Fill tiles are large, so reach for BGG's full-res image; the small inline
+  // covers stay on the lighter thumbnail (D-35: don't pull big images for a 56px icon).
+  const src = opts.fill ? (meta?.image ?? meta?.thumbnail) : (meta?.thumbnail ?? meta?.image);
   const cls = opts.fill ? 'cover fill' : 'cover';
   if (src) {
     return opts.fill
