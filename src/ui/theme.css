@@ -398,7 +398,9 @@ label.mono {
   padding: 1.5rem 0 2.5rem;
 }
 .hero-mark {
-  image-rendering: pixelated;
+  /* The mark is a smooth vector, not pixel art — opt out of the global
+     pixelated rule (line 82) so it scales cleanly down to display size. */
+  image-rendering: auto;
 }
 .hero h1 {
   font-size: 2rem;
