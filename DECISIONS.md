@@ -881,25 +881,27 @@ ever open BGG.
 
 ### D-59 — Reviews on atstore.fyi: user-owned records, quiet surfacing
 
-**Context.** rolld is (or will be) listed on the atstore.fyi app directory, which lets
-a person publish a review as a record on their *own* PDS (`fyi.atstore.listing.review`,
-pointed at rolld's `fyi.atstore.listing.detail`). Porting standard-reader's version
-naively would drag in a second OAuth client, a progressive scope re-auth, a server
-database, and extra routes — none of which rolld has or needs.
+rolld is (or will be) listed on the atstore.fyi app directory. atstore lets someone post a
+review of a listing as a record on their own PDS (`fyi.atstore.listing.review`, pointing at
+rolld's `fyi.atstore.listing.detail`), so a review is just another record the user owns.
+standard-reader built exactly this, and porting it verbatim would have dragged in a second
+OAuth client, a progressive scope re-auth, a server database, and a couple of extra routes.
+rolld needs none of that: it already logs in with `transition:generic`, which grants repo
+write, so it can post the review with the session it already has. No scope change, no re-consent.
 
-**Decision.** rolld writes the review with the *existing* session: `transition:generic`
-already grants repo write, so no scope change and no re-consent. The records are
-external-namespace (`fyi.atstore.*`) but are the user's own authored data, consistent
-with D-5. Surface it as a **passive, usage-gated** item in the header account menu —
-never a toast or nag. Show it only to signed-in users with ≥3 own plays/ratings who
-haven't reviewed yet, and only once rolld's listing URI is configured. Remember
-"already reviewed" in `localStorage` (per-device), not on the PDS.
+The records live in an external namespace (`fyi.atstore.*`) rather than `at.rolld.*`, which is a
+first for rolld. That's fine; a review is the user's own authored data, which is exactly what
+belongs on their PDS under D-5. What matters is whose data it is, not whose lexicon named it.
 
-**Why.** Quiet and honest beats nagging (the rolld ethos). No scope change means no
-consent churn for existing users. localStorage keeps the lexicons lean (no D-8
-optional-field just for UI ephemera).
+For how it surfaces, I went with the quietest option that still works: a usage-gated item in the
+header account menu, never a toast or a nag. It only appears for signed-in users who've actually
+used rolld (at least 3 plays or ratings), who haven't already reviewed, and only once rolld's own
+listing URI is filled in. "Already reviewed" is remembered in `localStorage`, per-device, rather
+than as a field on the profile record; a dismissed-a-prompt flag is UI ephemera, not something
+worth a D-8 schema addition or a write to the user's repo.
 
-**Cost accepted.** Per-device memory (a cleared cache or new device can re-offer the
-link once). One small `listRecords` count to decide eligibility. A hard dependency on
-atstore's `fyi.atstore.*` lexicons and on rolld's own listing record existing before
-the feature can light up (`ATSTORE_LISTING_URI`, a launch-time maintainer action).
+Cost accepted: the per-device memory means a cleared cache or a new device can offer the link once
+more, which is harmless for something this low-stakes. Eligibility costs one small `listRecords`
+count when the menu first opens. And the whole thing stays dark until rolld's atstore listing
+actually exists and its `at://` URI is configured (`ATSTORE_LISTING_URI`), a launch-time maintainer
+step the code can't do for itself.

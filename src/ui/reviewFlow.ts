@@ -23,8 +23,9 @@ export function openReviewFlow(ctx: PageCtx, opts: { onReviewed?: () => void } =
     html`
       <form id="review-form">
         <p class="mono small muted">
-          Your review is published to your account and shown on
-          <a href="${ATSTORE_LISTING_URL}" target="_blank" rel="noopener noreferrer">atstore</a>.
+          Your review goes on your own account, and shows up on
+          <a href="${ATSTORE_LISTING_URL}" target="_blank" rel="noopener noreferrer">atstore</a>
+          so other players can see what you think of rolld.
         </p>
         <label class="mono">Your rating</label>
         <div class="star-picker" id="stars">
@@ -72,7 +73,7 @@ export function openReviewFlow(ctx: PageCtx, opts: { onReviewed?: () => void } =
         });
         markReviewedLocally();
         sheet.close();
-        toast('Thanks — your review is posted.');
+        toast('Thanks! Your review is posted. :)');
         opts.onReviewed?.();
       } catch {
         submit.disabled = false;
