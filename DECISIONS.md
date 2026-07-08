@@ -878,3 +878,28 @@ Cost accepted: a small divergence from BGG's own wording, so someone cross-refer
 BGG sees "weight" there and "complexity" here. They're plainly the same 1–5 number, and "clearer
 to a newcomer" wins over "matches the source's label" on a surface most people meet before they
 ever open BGG.
+
+### D-59 — Reviews on atstore.fyi: user-owned records, quiet surfacing
+
+**Context.** rolld is (or will be) listed on the atstore.fyi app directory, which lets
+a person publish a review as a record on their *own* PDS (`fyi.atstore.listing.review`,
+pointed at rolld's `fyi.atstore.listing.detail`). Porting standard-reader's version
+naively would drag in a second OAuth client, a progressive scope re-auth, a server
+database, and extra routes — none of which rolld has or needs.
+
+**Decision.** rolld writes the review with the *existing* session: `transition:generic`
+already grants repo write, so no scope change and no re-consent. The records are
+external-namespace (`fyi.atstore.*`) but are the user's own authored data, consistent
+with D-5. Surface it as a **passive, usage-gated** item in the header account menu —
+never a toast or nag. Show it only to signed-in users with ≥3 own plays/ratings who
+haven't reviewed yet, and only once rolld's listing URI is configured. Remember
+"already reviewed" in `localStorage` (per-device), not on the PDS.
+
+**Why.** Quiet and honest beats nagging (the rolld ethos). No scope change means no
+consent churn for existing users. localStorage keeps the lexicons lean (no D-8
+optional-field just for UI ephemera).
+
+**Cost accepted.** Per-device memory (a cleared cache or new device can re-offer the
+link once). One small `listRecords` count to decide eligibility. A hard dependency on
+atstore's `fyi.atstore.*` lexicons and on rolld's own listing record existing before
+the feature can light up (`ATSTORE_LISTING_URI`, a launch-time maintainer action).
