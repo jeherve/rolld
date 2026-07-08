@@ -85,37 +85,71 @@ describe('getProfiles — batched, chunked, fault-tolerant', () => {
 
 /* ---- player-tag typeahead (D-56) ---- */
 
-const fakeTypeahead = (impl: (q: string) => unknown): Client =>
-  ({ get: (_nsid: string, opts: { params: { q: string } }) => impl(opts.params.q) }) as unknown as Client;
+const actorsResult = (actors: unknown[]): unknown => ({ ok: true, data: { actors } });
+const fakeTypeahead = (impl: () => unknown): Client =>
+  ({ get: () => impl() }) as unknown as Client;
 
-describe('searchActors — network-wide handle typeahead (D-56)', () => {
+describe('searchActors — merged, freshness-preferring handle typeahead (D-56)', () => {
   it('maps actors to suggestions, keeping displayName/avatar optional', async () => {
-    const client = fakeTypeahead(() => ({
-      ok: true,
-      data: {
-        actors: [
-          { did: 'did:plc:a', handle: 'alice.bsky.social', displayName: 'Alice', avatar: 'https://x/a.png' },
-          { did: 'did:plc:b', handle: 'bob.test' },
-        ],
-      },
-    }));
-    await expect(searchActors('al', { client })).resolves.toEqual([
+    const freshClient = fakeTypeahead(() =>
+      actorsResult([
+        { did: 'did:plc:a', handle: 'alice.bsky.social', displayName: 'Alice', avatar: 'https://x/a.png' },
+        { did: 'did:plc:b', handle: 'bob.test' },
+      ]),
+    );
+    const networkClient = fakeTypeahead(() => actorsResult([]));
+    await expect(searchActors('al', { freshClient, networkClient })).resolves.toEqual([
       { did: 'did:plc:a', handle: 'alice.bsky.social', displayName: 'Alice', avatar: 'https://x/a.png' },
       { did: 'did:plc:b', handle: 'bob.test' },
     ]);
   });
 
-  it('skips the request entirely for a blank query', async () => {
-    const client = fakeTypeahead(() => {
-      throw new Error('should not be called');
-    });
-    await expect(searchActors('   ', { client })).resolves.toEqual([]);
+  it('prefers the AppView’s current handle over the network index’s stale one (the rename bug)', async () => {
+    // Same DID, renamed: the AppView has the new handle, waow still has the old one.
+    const freshClient = fakeTypeahead(() =>
+      actorsResult([{ did: 'did:plc:x', handle: 'adrienn.herve.bzh', displayName: 'Adrienn' }]),
+    );
+    const networkClient = fakeTypeahead(() =>
+      actorsResult([{ did: 'did:plc:x', handle: 'adrienn.pds.herve.bzh' }]),
+    );
+    const out = await searchActors('adrienn.herve', { freshClient, networkClient });
+    expect(out).toEqual([{ did: 'did:plc:x', handle: 'adrienn.herve.bzh', displayName: 'Adrienn' }]);
   });
 
-  it('degrades to empty on failure, so the name field still works as free text (D-15)', async () => {
-    const client = fakeTypeahead(() => {
-      throw new Error('typeahead down');
+  it('keeps network-only accounts for whole-network coverage, listed after the fresh ones', async () => {
+    const freshClient = fakeTypeahead(() =>
+      actorsResult([{ did: 'did:plc:a', handle: 'alice.bsky.social' }]),
+    );
+    const networkClient = fakeTypeahead(() =>
+      actorsResult([{ did: 'did:plc:pds', handle: 'carol.some.pds' }]),
+    );
+    const out = await searchActors('c', { freshClient, networkClient });
+    expect(out.map((a) => a.did)).toEqual(['did:plc:a', 'did:plc:pds']);
+  });
+
+  it('still answers from the surviving source when one is down', async () => {
+    const freshClient = fakeTypeahead(() => {
+      throw new Error('appview down');
     });
-    await expect(searchActors('alice', { client })).resolves.toEqual([]);
+    const networkClient = fakeTypeahead(() =>
+      actorsResult([{ did: 'did:plc:pds', handle: 'carol.some.pds' }]),
+    );
+    await expect(searchActors('c', { freshClient, networkClient })).resolves.toEqual([
+      { did: 'did:plc:pds', handle: 'carol.some.pds' },
+    ]);
+  });
+
+  it('skips the request entirely for a blank query', async () => {
+    const boom = fakeTypeahead(() => {
+      throw new Error('should not be called');
+    });
+    await expect(searchActors('   ', { freshClient: boom, networkClient: boom })).resolves.toEqual([]);
+  });
+
+  it('degrades to empty when both sources fail, so the name field is free text (D-15)', async () => {
+    const boom = fakeTypeahead(() => {
+      throw new Error('down');
+    });
+    await expect(searchActors('alice', { freshClient: boom, networkClient: boom })).resolves.toEqual([]);
   });
 });

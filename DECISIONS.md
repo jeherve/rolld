@@ -810,13 +810,17 @@ co-player is tagged by DID, so their name becomes a link to their profile later.
 ignore the suggestions and it stays a plain string, exactly as before. Editing the field after a
 pick drops the DID back to free text, so you can't end up tagged to someone you didn't mean.
 
-The search goes through typeahead.waow.tech, which speaks the same
-`app.bsky.actor.searchActorsTypeahead` call as the AppView but over the *whole* network rather
-than one platform's curated user list. That matters here: the person you played Catan with might
-be on any PDS, and a co-player you can only tag if they're a Bluesky user is a poorer version of
-the feature. It's kept in its own config constant (`TYPEAHEAD_API`), so swapping the host is a
-one-line change, same as the AppView (D-51). The lookup is best-effort: if it's down, the field
-is still a plain name box, because free text was always the floor (D-15).
+The search merges two sources by DID. typeahead.waow.tech speaks the same
+`app.bsky.actor.searchActorsTypeahead` call as the AppView but covers the *whole* network rather
+than one platform's curated user list — the person you played Catan with might be on any PDS, and
+a co-player you can only tag if they're a Bluesky user is a poorer version of the feature. But its
+index lags on handle renames: an account that moved from `x.pds.example` to `x.example` was
+surfacing under the dead old handle. So the AppView (`APPVIEW_API`), whose index tracks renames, is
+queried alongside it, and when the same DID comes back from both, the AppView's record wins and is
+listed first — that's the fresh, current handle. Accounts only the whole-network index knows are
+kept after it. Both hosts are their own config constants, so swapping either is a one-line change
+(D-51). The whole lookup is best-effort: if either source is down the other still answers, and if
+both fail the field is a plain name box, because free text was always the floor (D-15).
 
 Why: the DID tag is what makes co-players real (links, later stats, "played with you"), and the
 only way people actually use it is if it costs nothing. A typeahead makes the good path the easy
