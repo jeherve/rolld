@@ -29,6 +29,7 @@ import { renderMarkdown } from '../read/markdown-render.js';
 import { getRecordValue, listAllPlays, listAllRatings, pdsClient } from '../read/repo.js';
 import { subscribeToPlays } from '../read/spacedust.js';
 import { mostPlayed, playSummary, timesPlayed, topRated } from '../stats/personal.js';
+import { wireActorTypeahead } from './actorTypeahead.js';
 import type { PageCtx } from './context.js';
 import { feedCard, type FeedAuthor } from './feedCard.js';
 import { countNoun, formatDate, formatDateLong, hasReportableContent, relativeTime } from './format.js';
@@ -107,7 +108,10 @@ export function login(ctx: PageCtx): void {
         </p>
         <form id="login-form" class="login-form">
           <label class="mono" for="handle">Your handle</label>
-          <input id="handle" name="handle" class="text-input mono" placeholder="you.bsky.social" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <div class="handle-field">
+            <input id="handle" name="handle" class="text-input mono" placeholder="you.bsky.social" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <div class="typeahead" data-handle-results></div>
+          </div>
           <button type="submit" class="pixel-btn is-active">Continue</button>
         </form>
         <p class="muted mono small" id="login-status"></p>
@@ -116,6 +120,18 @@ export function login(ctx: PageCtx): void {
   );
   const form = ctx.main.querySelector<HTMLFormElement>('#login-form')!;
   const status = ctx.main.querySelector<HTMLElement>('#login-status')!;
+  const handleInput = form.querySelector<HTMLInputElement>('#handle')!;
+  const handleResults = form.querySelector<HTMLElement>('[data-handle-results]')!;
+  const continueBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  // Same network-wide handle typeahead as the co-player field (D-56): pick an
+  // account to fill the field, then confirm with Continue (no auto-redirect).
+  wireActorTypeahead(handleInput, handleResults, {
+    onPick: (s) => {
+      handleInput.value = s.handle;
+      handleResults.replaceChildren();
+      continueBtn.focus();
+    },
+  });
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const handle = new FormData(form).get('handle')?.toString().trim();

@@ -843,10 +843,12 @@ label.mono {
   margin: 0;
 }
 /* The handle typeahead floats over what follows so it never grows the row (D-56). */
-.player-name {
+.player-name,
+.handle-field {
   position: relative;
 }
-.player-name .typeahead {
+.player-name .typeahead,
+.handle-field .typeahead {
   position: absolute;
   top: 100%;
   left: 0;

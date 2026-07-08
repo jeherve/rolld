@@ -10,13 +10,13 @@ import { uploadAndEmbed } from '../atproto/blob.js';
 import { writePlay, writeRating } from '../atproto/records.js';
 import { searchGames } from '../bgg/resolveGame.js';
 import { entryUrl, gamePath } from '../links.js';
-import { searchActors, type ActorSuggestion } from '../read/bsky.js';
+import { type ActorSuggestion } from '../read/bsky.js';
 import type { GameRef, ImageEmbed, Player } from '../records/types.js';
 import { createCompanionPost, defaultShareText } from '../share/bsky.js';
 import { graphemesRemaining } from '../text/graphemes.js';
+import { wireActorTypeahead } from './actorTypeahead.js';
 import type { PageCtx } from './context.js';
 import { html, render, type SafeHtml } from './html.js';
-import { avatar } from './render.js';
 
 /* ---- bottom-sheet shell ------------------------------------------------------ */
 
@@ -313,47 +313,16 @@ function wirePlayerRow(entry: HTMLElement, player: Player): void {
     player.score = v ? Number(v) : undefined;
   });
 
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  nameInput.addEventListener('input', () => {
-    // A manual edit means this is free text again — drop any DID tag from a pick.
-    player.displayName = nameInput.value;
-    if (player.did) {
-      delete player.did;
-      setTag();
-    }
-    clearTimeout(timer);
-    const q = nameInput.value.trim();
-    if (q.length < 2) {
-      results.replaceChildren();
-      return;
-    }
-    // Debounced ~250ms so a fast typist doesn't fire a request per keystroke.
-    timer = setTimeout(() => {
-      void searchActors(q)
-        .then((actors) => {
-          if (nameInput.value.trim() !== q) return; // a newer keystroke won the race
-          render(
-            results,
-            html`${actors.map(
-              (a) => html`<button type="button" class="ta-item ta-actor" data-did="${a.did}" data-handle="${a.handle}" data-name="${a.displayName ?? ''}">
-                ${avatar(a.avatar, a.handle, 22)}
-                <span class="ta-actor-name">${a.displayName ?? `@${a.handle}`}</span>
-                <span class="muted mono">@${a.handle}</span>
-              </button>`,
-            )}`,
-          );
-          for (const item of results.querySelectorAll<HTMLButtonElement>('.ta-actor')) {
-            item.addEventListener('click', () =>
-              choose({
-                did: item.dataset.did!,
-                handle: item.dataset.handle!,
-                ...(item.dataset.name ? { displayName: item.dataset.name } : {}),
-              }),
-            );
-          }
-        })
-        .catch(() => results.replaceChildren());
-    }, 250);
+  wireActorTypeahead(nameInput, results, {
+    onPick: choose,
+    onType: () => {
+      // A manual edit means this is free text again — drop any DID tag from a pick.
+      player.displayName = nameInput.value;
+      if (player.did) {
+        delete player.did;
+        setTag();
+      }
+    },
   });
 }
 
