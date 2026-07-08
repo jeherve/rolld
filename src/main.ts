@@ -1,6 +1,7 @@
 import './ui/theme.css';
 import { completeLogin, initOAuth, restoreSession } from './auth/oauth.js';
 import type { RolldAgent } from './atproto/client.js';
+import { appviewClient, getProfile } from './read/bsky.js';
 import { resolveMiniDoc } from './read/identity.js';
 import { createRouter } from './router/router.js';
 import type { AppState, PageCtx, SessionInfo } from './ui/context.js';
@@ -57,11 +58,13 @@ const router = createRouter({
 /** Build the session info (resolve the user's handle + PDS) from an authed agent. */
 async function setSession(agent: RolldAgent): Promise<void> {
   const doc = await resolveMiniDoc(agent.did);
+  const profile = await getProfile(appviewClient(), agent.did).catch(() => null);
   const session: SessionInfo = {
     agent,
     did: agent.did,
     handle: doc?.handle ?? agent.did,
     pds: doc?.pds ?? '',
+    ...(profile?.avatar ? { avatar: profile.avatar } : {}),
   };
   state.session = session;
   ctx.refreshChrome();
