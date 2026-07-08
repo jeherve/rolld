@@ -20,13 +20,13 @@ import { html, render, type SafeHtml } from './html.js';
 
 /* ---- bottom-sheet shell ------------------------------------------------------ */
 
-interface Sheet {
+export interface Sheet {
   root: HTMLElement;
   body: HTMLElement;
   close(): void;
 }
 
-function openSheet(title: string, content: SafeHtml): Sheet {
+export function openSheet(title: string, content: SafeHtml): Sheet {
   const root = document.createElement('div');
   root.className = 'sheet-overlay';
   render(
@@ -130,13 +130,17 @@ function gamePicker(prefill?: GameRef): GamePicker {
 
 /* ---- success beat ------------------------------------------------------------ */
 
-function successBeat(message: string): void {
+export function toast(message: string): void {
   const beat = document.createElement('div');
   beat.className = 'success-beat';
   beat.setAttribute('role', 'status');
   render(beat, html`<span class="die-settled" aria-hidden="true"></span> ${message}`);
   document.body.appendChild(beat);
   setTimeout(() => beat.remove(), 1800);
+}
+
+function successBeat(message: string): void {
+  toast(message);
 }
 
 /* ---- FLOW-1: log a play ------------------------------------------------------ */
