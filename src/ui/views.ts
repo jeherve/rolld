@@ -441,11 +441,13 @@ async function hydrateTopGames(root: Element, plays: PlayRecord[]): Promise<void
   for (const node of root.querySelectorAll<HTMLElement>('[data-gid]')) {
     const meta = metas.get(node.dataset.gid!);
     const cover = node.querySelector('.cover.ph');
-    if (meta?.thumbnail && cover) {
+    // Prefer the full-res image for these large tiles; fall back to the thumbnail.
+    const src = meta?.image ?? meta?.thumbnail;
+    if (src && cover) {
       const img = document.createElement('img');
       img.className = 'cover fill';
-      img.src = meta.thumbnail;
-      img.alt = meta.name;
+      img.src = src;
+      img.alt = meta!.name;
       img.loading = 'lazy';
       cover.replaceWith(img);
     }
