@@ -23,24 +23,11 @@ export interface ActorSuggestion {
   avatar?: string;
 }
 
-/**
- * Network-wide handle typeahead for tagging co-players (D-56). Backed by
- * typeahead.waow.tech, which speaks `app.bsky.actor.searchActorsTypeahead` over
- * the whole network. Best-effort: a failed lookup returns an empty list so the
- * name field still works as free text (D-15 — a co-player can be a plain name).
- */
-export async function searchActors(
-  q: string,
-  opts: { limit?: number; client?: Client } = {},
-): Promise<ActorSuggestion[]> {
-  const query = q.trim();
-  if (!query) return [];
-  const client = opts.client ?? appviewClient(TYPEAHEAD_API);
+/** One `searchActorsTypeahead` call, mapped to suggestions; [] on any failure. */
+async function typeaheadOnce(client: Client, q: string, limit: number): Promise<ActorSuggestion[]> {
   try {
     const data = await ok(
-      client.get('app.bsky.actor.searchActorsTypeahead', {
-        params: { q: query, limit: opts.limit ?? 6 },
-      }),
+      client.get('app.bsky.actor.searchActorsTypeahead', { params: { q, limit } }),
     );
     return data.actors.map((a) => ({
       did: a.did,
@@ -51,6 +38,46 @@ export async function searchActors(
   } catch {
     return [];
   }
+}
+
+/**
+ * Handle typeahead for tagging co-players (D-56). Queries two sources and merges
+ * them by DID:
+ *
+ * - the AppView (`APPVIEW_API`), whose index tracks handle renames, so it returns
+ *   the *current* handle and display name; and
+ * - typeahead.waow.tech, which covers the *whole* network, not just one platform's
+ *   curated list — so a co-player on any PDS can still be found.
+ *
+ * When the same account (DID) comes back from both, the AppView's record wins and
+ * is listed first: it's the fresher one, which is what fixes a rename showing the
+ * old handle (an account renamed from `x.pds.example` to `x.example` was surfacing
+ * as the dead old handle). Accounts only the network-wide index knows are kept
+ * after it. Best-effort throughout: if either source is down the other still
+ * answers, and if both fail the name field is just free text (D-15).
+ */
+export async function searchActors(
+  q: string,
+  opts: { limit?: number; freshClient?: Client; networkClient?: Client } = {},
+): Promise<ActorSuggestion[]> {
+  const query = q.trim();
+  if (!query) return [];
+  const limit = opts.limit ?? 6;
+  const fresh = opts.freshClient ?? appviewClient(APPVIEW_API);
+  const network = opts.networkClient ?? appviewClient(TYPEAHEAD_API);
+  const [freshRes, networkRes] = await Promise.all([
+    typeaheadOnce(fresh, query, limit),
+    typeaheadOnce(network, query, limit),
+  ]);
+  // Fresh first, so its up-to-date handle wins for any DID in both lists.
+  const seen = new Set<string>();
+  const merged: ActorSuggestion[] = [];
+  for (const a of [...freshRes, ...networkRes]) {
+    if (seen.has(a.did)) continue;
+    seen.add(a.did);
+    merged.push(a);
+  }
+  return merged.slice(0, limit);
 }
 
 export interface BskyProfile {
