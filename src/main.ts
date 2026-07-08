@@ -6,6 +6,7 @@ import { resolveMiniDoc } from './read/identity.js';
 import { createRouter } from './router/router.js';
 import type { AppState, PageCtx, SessionInfo } from './ui/context.js';
 import { openLogFlow } from './ui/flows.js';
+import { bindAccountMenu } from './ui/accountMenu.js';
 import { mountShell } from './ui/layout.js';
 import * as views from './ui/views.js';
 
@@ -27,6 +28,7 @@ const ctx: PageCtx = {
   state,
   refreshChrome: () => {
     main = mountShell(root, state);
+    bindAccountMenu(root, ctx);
   },
 };
 
@@ -57,8 +59,10 @@ const router = createRouter({
 
 /** Build the session info (resolve the user's handle + PDS) from an authed agent. */
 async function setSession(agent: RolldAgent): Promise<void> {
-  const doc = await resolveMiniDoc(agent.did);
-  const profile = await getProfile(appviewClient(), agent.did).catch(() => null);
+  const [doc, profile] = await Promise.all([
+    resolveMiniDoc(agent.did),
+    getProfile(appviewClient(), agent.did).catch(() => null),
+  ]);
   const session: SessionInfo = {
     agent,
     did: agent.did,

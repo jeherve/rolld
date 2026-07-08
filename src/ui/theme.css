@@ -950,3 +950,13 @@ label.mono {
 .star-picker { display: flex; gap: 6px; margin: 6px 0 14px; }
 .star-btn { font-size: 20px; line-height: 1; opacity: 0.5; }
 .star-btn.is-active { opacity: 1; }
+
+/* header account menu (D-59) — pixel chrome, no border-radius per design-system */
+.account { position: relative; }
+.account-trigger { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; cursor: pointer; color: inherit; font: inherit; }
+.account-menu { position: absolute; right: 0; top: 100%; margin-top: 6px; display: flex; flex-direction: column; min-width: 168px; background: var(--panel, #fff); border: var(--pixel, 4px) solid var(--accent, #0002); box-shadow: var(--shadow); padding: 4px; z-index: 40; }
+.account-menu[hidden] { display: none; }
+.account-menu > a,
+.account-menu > button { display: block; width: 100%; text-align: left; padding: 8px 10px; background: none; border: 0; cursor: pointer; font: inherit; color: inherit; }
+.account-menu > a:hover,
+.account-menu > button:hover { background: var(--accent, #0001); color: var(--bg, #fff); }

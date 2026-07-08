@@ -5,7 +5,7 @@
  * they're where shared Atmosphere links land (D-40). Copy is in the maintainer's plain,
  * warm voice (D-30): sentence case, invitations not dead-ends, honest about the tech.
  */
-import { beginLogin, signOut } from '../auth/oauth.js';
+import { beginLogin } from '../auth/oauth.js';
 import { deleteProfile } from '../atproto/records.js';
 import { resolveGame, resolveGames, searchGames } from '../bgg/resolveGame.js';
 import type { GameMetadata } from '../bgg/types.js';
@@ -36,6 +36,7 @@ import { countNoun, formatDate, formatDateLong, hasReportableContent, relativeTi
 import { html, raw, render, type SafeHtml } from './html.js';
 import { externalMark } from './icons.js';
 import { renderLanding } from './landing.js';
+import { performSignOut } from './accountMenu.js';
 import { openLogFlow, openRateFlow } from './flows.js';
 import { linkifyBio } from './richText.js';
 import { avatar, gameCover, gradeBadge, playPhotos, reportLink, sectionTitle } from './render.js';
@@ -699,12 +700,7 @@ export function settings(ctx: PageCtx): void {
     `),
   );
   ctx.main.querySelector('[data-action="signout"]')?.addEventListener('click', () => {
-    void (async () => {
-      await signOut();
-      ctx.state.session = null;
-      ctx.refreshChrome();
-      ctx.navigate('/');
-    })();
+    void performSignOut(ctx);
   });
   ctx.main.querySelector('[data-action="optout"]')?.addEventListener('click', () => {
     const status = ctx.main.querySelector<HTMLElement>('#optout-status')!;
