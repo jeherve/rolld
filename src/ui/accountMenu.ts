@@ -10,6 +10,7 @@ import {
   hasReviewedLocally,
   isReviewEligible,
 } from '../atproto/atstoreEligibility.js';
+import { ATSTORE_LISTING_URI } from '../config.js';
 import type { PageCtx, SessionInfo } from './context.js';
 import { html, type SafeHtml } from './html.js';
 import { avatar } from './render.js';
@@ -40,8 +41,19 @@ export async function performSignOut(ctx: PageCtx): Promise<void> {
 
 let eligibilityCache: { did: string; eligible: boolean } | null = null;
 
+// bindAccountMenu runs on every refreshChrome (sign-in/out). Track the document-level
+// handlers it installs so we can drop the previous pair before adding a new one, rather
+// than accumulating one set per mount.
+let docClickHandler: ((e: MouseEvent) => void) | null = null;
+let docKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+
 async function resolveEligible(session: SessionInfo): Promise<boolean> {
   if (eligibilityCache && eligibilityCache.did === session.did) return eligibilityCache.eligible;
+  // Dormant build: skip the network entirely — the eligibility gate is always false anyway.
+  if (!ATSTORE_LISTING_URI) {
+    eligibilityCache = { did: session.did, eligible: false };
+    return false;
+  }
   let eligible = false;
   try {
     const activityCount = await countOwnActivity(session.pds, session.did);
@@ -54,6 +66,12 @@ async function resolveEligible(session: SessionInfo): Promise<boolean> {
 }
 
 export function bindAccountMenu(root: HTMLElement, ctx: PageCtx): void {
+  // Drop any document listeners from a prior mount so they don't accumulate.
+  if (docClickHandler) document.removeEventListener('click', docClickHandler);
+  if (docKeydownHandler) document.removeEventListener('keydown', docKeydownHandler);
+  docClickHandler = null;
+  docKeydownHandler = null;
+
   const wrap = root.querySelector<HTMLElement>('[data-account]');
   const session = ctx.state.session;
   if (!wrap || !session) return;
@@ -99,10 +117,17 @@ export function bindAccountMenu(root: HTMLElement, ctx: PageCtx): void {
     close();
     void performSignOut(ctx);
   });
-  document.addEventListener('click', (e) => {
+  // Any link/button inside the menu (Settings, the lazy Rate item) dismisses the
+  // dropdown, since the header isn't re-mounted on route change. Double-close is harmless.
+  menu.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('a, button')) close();
+  });
+  docClickHandler = (e: MouseEvent): void => {
     if (!wrap.contains(e.target as Node)) close();
-  });
-  document.addEventListener('keydown', (e) => {
+  };
+  docKeydownHandler = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') close();
-  });
+  };
+  document.addEventListener('click', docClickHandler);
+  document.addEventListener('keydown', docKeydownHandler);
 }

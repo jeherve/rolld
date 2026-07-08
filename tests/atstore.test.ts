@@ -60,6 +60,11 @@ describe('buildReviewRecord', () => {
   it('rejects an empty subject', () => {
     expect(() => buildReviewRecord({ rating: 3, subject: '', now: at })).toThrow();
   });
+
+  it('caps text at 8000 characters', () => {
+    const r = buildReviewRecord({ rating: 5, text: 'x'.repeat(9000), subject: SUBJECT, now: at });
+    expect(r.text).toHaveLength(8000);
+  });
 });
 
 describe('submitAtstoreReview', () => {
@@ -88,5 +93,14 @@ describe('submitAtstoreReview', () => {
   it('throws when no listing URI is configured', async () => {
     const { agent } = fakeAgent(null);
     await expect(submitAtstoreReview(agent, { rating: 3, displayName: 'Jem' })).rejects.toThrow();
+  });
+
+  it('rejects an out-of-range rating without writing the profile record', async () => {
+    const { agent, calls } = fakeAgent(null);
+    await expect(
+      submitAtstoreReview(agent, { rating: 6, displayName: 'Jem', subject: SUBJECT }),
+    ).rejects.toThrow();
+    expect(calls.put).toHaveLength(0);
+    expect(calls.create).toHaveLength(0);
   });
 });

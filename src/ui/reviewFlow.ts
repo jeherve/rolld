@@ -28,11 +28,11 @@ export function openReviewFlow(ctx: PageCtx, opts: { onReviewed?: () => void } =
           so other players can see what you think of rolld.
         </p>
         <label class="mono">Your rating</label>
-        <div class="star-picker" id="stars">
+        <div class="star-picker" id="stars" role="group" aria-label="Your rating">
           ${Array.from(
             { length: 5 },
             (_, n) =>
-              html`<button type="button" class="pixel-btn star-btn" data-star="${n + 1}" aria-label="${n + 1} star${n ? 's' : ''}">★</button>`,
+              html`<button type="button" class="pixel-btn star-btn" data-star="${n + 1}" aria-pressed="false" aria-label="${n + 1} star${n ? 's' : ''}">★</button>`,
           )}
         </div>
         <label class="mono" for="review-text">A few words (optional)</label>
@@ -50,7 +50,9 @@ export function openReviewFlow(ctx: PageCtx, opts: { onReviewed?: () => void } =
     btn.addEventListener('click', () => {
       rating = Number(btn.dataset.star);
       for (const b of stars.querySelectorAll<HTMLButtonElement>('.star-btn')) {
-        b.classList.toggle('is-active', Number(b.dataset.star) <= rating);
+        const on = Number(b.dataset.star) <= rating;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', String(on));
       }
       submit.disabled = rating < 1;
     });

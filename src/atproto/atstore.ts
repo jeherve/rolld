@@ -43,7 +43,7 @@ export function buildReviewRecord(input: ReviewInput): AtstoreReviewRecord {
     rating: input.rating,
     createdAt: (input.now ?? nowIso)(),
   };
-  const text = input.text?.trim();
+  const text = input.text?.trim().slice(0, 8000);
   if (text) record.text = text;
   return record;
 }
@@ -68,11 +68,11 @@ export async function submitAtstoreReview(
 ): Promise<{ uri: string; cid: string }> {
   const subject = input.subject ?? ATSTORE_LISTING_URI;
   if (!subject) throw new Error('atstore listing is not configured yet');
-  await ensureAtstoreProfile(agent, input.displayName ?? agent.did);
   const record = buildReviewRecord({
     rating: input.rating,
     ...(input.text ? { text: input.text } : {}),
     subject,
   });
+  await ensureAtstoreProfile(agent, input.displayName ?? agent.did);
   return agent.createRecord(ATSTORE_REVIEW_COLLECTION, record);
 }

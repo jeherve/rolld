@@ -901,7 +901,8 @@ than as a field on the profile record; a dismissed-a-prompt flag is UI ephemera,
 worth a D-8 schema addition or a write to the user's repo.
 
 Cost accepted: the per-device memory means a cleared cache or a new device can offer the link once
-more, which is harmless for something this low-stakes. Eligibility costs one small `listRecords`
-count when the menu first opens. And the whole thing stays dark until rolld's atstore listing
+more, which is harmless for something this low-stakes. When the listing is configured, deciding
+eligibility costs a couple of small `listRecords` reads the first time the menu opens; while it
+stays dormant, nothing runs at all. And the whole thing stays dark until rolld's atstore listing
 actually exists and its `at://` URI is configured (`ATSTORE_LISTING_URI`), a launch-time maintainer
 step the code can't do for itself.
