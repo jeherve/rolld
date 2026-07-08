@@ -642,7 +642,9 @@ label.mono {
 }
 .game-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* minmax(0, 1fr), not 1fr: keeps a large cover from blowing the track out to its
+     intrinsic width now that tiles use full-res box art. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1.25rem;
 }
@@ -650,6 +652,7 @@ label.mono {
   display: grid;
   gap: 0.4rem;
   align-content: start;
+  min-width: 0;
   color: var(--text);
   font-size: 0.9rem;
 }
@@ -919,7 +922,7 @@ label.mono {
     grid-template-columns: repeat(3, 1fr);
   }
   .game-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .sheet-overlay {
     align-items: center;
