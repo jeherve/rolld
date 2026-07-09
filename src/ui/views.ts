@@ -27,6 +27,7 @@ import { buildFriendsFeed } from '../read/friends.js';
 import { resolveMiniDoc } from '../read/identity.js';
 import { renderMarkdown } from '../read/markdown-render.js';
 import { getRecordValue, listAllPlays, listAllRatings, pdsClient } from '../read/repo.js';
+import { fetchRpgActorPresence } from '../read/rpgActor.js';
 import { subscribeToPlays } from '../read/spacedust.js';
 import { mostPlayed, playSummary, timesPlayed, topRated } from '../stats/personal.js';
 import { wireActorTypeahead } from './actorTypeahead.js';
@@ -39,7 +40,7 @@ import { renderLanding } from './landing.js';
 import { performSignOut } from './accountMenu.js';
 import { openLogFlow, openRateFlow } from './flows.js';
 import { linkifyBio } from './richText.js';
-import { avatar, gameCover, gradeBadge, playPhotos, reportLink, sectionTitle } from './render.js';
+import { avatar, gameCover, gradeBadge, playPhotos, reportLink, rpgActorCard, sectionTitle } from './render.js';
 import { diceLoader, emptyState, errorState } from './states.js';
 
 const appview = appviewClient();
@@ -397,7 +398,25 @@ export function profile(ctx: PageCtx, handle: string): void {
     const declared = await getRecordValue<ProfileRecord>(pdsClient(doc.pds), doc.did, COLLECTION.profile, PROFILE_RKEY);
     render(el, profileView(doc.handle, bio, plays.map((r) => r.value), ratings.map((r) => r.value), Boolean(declared)));
     void hydrateTopGames(el, plays.map((r) => r.value));
+    void hydrateRpgActor(el, doc.did, doc.pds, doc.handle);
   })().catch(() => render(el, loadError()));
+}
+
+/**
+ * Fill the "also on rpg.actor" card after the profile renders (D-60) — never
+ * blocking the page on a sibling-app read. Absent presence (or any error) removes
+ * the placeholder, so the card only appears for people actually on rpg.actor.
+ */
+async function hydrateRpgActor(root: Element, did: string, pds: string, handle: string): Promise<void> {
+  const slot = root.querySelector('#rpg-actor');
+  if (!slot) return;
+  try {
+    const presence = await fetchRpgActorPresence(pdsClient(pds), did);
+    if (presence) render(slot, rpgActorCard(did, handle, presence));
+    else slot.remove();
+  } catch {
+    slot.remove();
+  }
 }
 
 function profileView(
@@ -428,6 +447,8 @@ function profileView(
         · <a href="${ORIGIN}/api/@${handle}/feed.xml" target="_blank" rel="noopener noreferrer">RSS</a>
       </p>
     </header>
+
+    <div id="rpg-actor"></div>
 
     ${!declared
       ? emptyState({ motif: '🎲', title: `${bio?.displayName ?? handle} hasn't logged any games on rolld yet`, body: 'Check back later, or log your own.' })
