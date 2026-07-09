@@ -906,3 +906,33 @@ eligibility costs a couple of small `listRecords` reads the first time the menu 
 stays dormant, nothing runs at all. And the whole thing stays dark until rolld's atstore listing
 actually exists and its `at://` URI is configured (`ATSTORE_LISTING_URI`), a launch-time maintainer
 step the code can't do for itself.
+
+### D-60 — rpg.actor on the profile: read a sibling app's records, write nothing
+
+rpg.actor is the RPG-character cousin of rolld: same atproto spine, characters kept as records on
+each user's own PDS, keyed on the same DIDs we already read. So a rolld profile can show "this
+person also keeps a character on rpg.actor" almost for free — it's a read over the same repo, no
+rolld lexicon, nothing stored. This is the whole promise of building on a PDS, two apps composing
+over one identity the user owns, and it would have felt odd not to honour it once I saw how little
+it costs.
+
+The read is pure atproto, not a call to rpg.actor's server: `getRecord actor.rpg.sprite/self` and
+`listRecords actor.rpg.stats`, straight from the owner's PDS through the same `pdsClient` the play
+log uses. The sprite blob goes through rolld's own `/api/blob` proxy, so the D-41 blob-refuse and
+the CORS handling apply to it exactly as they do to a play photo; rpg.actor's public API is used for
+nothing. If the person isn't on rpg.actor the sprite 404s and the stats list comes back empty, and
+the card renders nothing at all; it stays dormant by default, the same shape as the atstore review
+flow (D-59). It hydrates after the profile paints, so a slow or missing sibling-app read never holds
+up the page.
+
+This keeps faith with D-5: rolld writes no foreign data. We read someone's own records and link out;
+we never copy an `actor.rpg.*` value into a rolld record, never mint a sprite, never surface the
+GM-validation or equipment machinery. Just the one slim card, bordered in the sea-green secondary to
+mark it as someone else's house, sitting high on the profile because it's identity.
+
+Cost accepted: rpg.actor's schemas aren't frozen the way ours will be at Phase 5, so this is an
+evolving external dependency; I treat it like Constellation or Slingshot, reading defensively and
+failing soft rather than trusting a shape. It adds two PDS reads per profile view, skipped entirely
+when the placeholder isn't there. And the card leans on rpg.actor's `/@handle` URLs and its RPG
+Maker sprite-sheet convention staying put; if either moves, it's the link or the crop that breaks,
+never the profile itself.
