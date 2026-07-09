@@ -81,3 +81,15 @@ export const PLC_HOSTS = ['https://plc.eurosky.network', 'https://plc.directory'
 
 /** Sent on every microcosm request (they ask for a descriptive UA + contact). */
 export const USER_AGENT = `rolld/0.0 (+${ORIGIN}; board game tracker; ${REPO_URL})`;
+
+/**
+ * atstore.fyi review flow (D-59). `ATSTORE_LISTING_URI` is the at:// URI of rolld's
+ * own `fyi.atstore.listing.detail` record — it does not exist until atstore approves
+ * rolld's listing, so it stays EMPTY here and the whole review feature is dormant
+ * (no menu item, no writes) until a maintainer fills it in at launch.
+ */
+export const ATSTORE_LISTING_URI = '';
+/** Public web page for rolld's atstore listing (the "atstore" text link in the sheet). */
+export const ATSTORE_LISTING_URL = 'https://atstore.fyi/products/rolld-at';
+/** Minimum of (own plays + own ratings) before the "Rate rolld" menu item is offered. */
+export const ATSTORE_REVIEW_MIN_ACTIVITY = 3;

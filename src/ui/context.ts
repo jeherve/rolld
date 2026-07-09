@@ -11,6 +11,7 @@ export interface SessionInfo {
   did: string;
   handle: string;
   pds: string;
+  avatar?: string;
 }
 
 export interface AppState {
