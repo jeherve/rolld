@@ -642,6 +642,50 @@ label.mono {
   align-items: center;
   gap: 0.25em;
 }
+
+/* ---- "also on rpg.actor" card (D-60) --------------------------------------
+   Sea-green (secondary, used with restraint) marks it as a sibling-app signal,
+   not rolld's own content. Sprite width/height/background are set inline from the
+   sheet's self-describing grid; here we only make the pixel art crisp. */
+.rpg-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+  padding: 0.6rem 0.75rem;
+  border: var(--pixel) solid var(--accent-2);
+  box-shadow: var(--shadow);
+  background: var(--panel);
+  color: var(--text);
+  text-decoration: none;
+}
+.rpg-card:hover {
+  transform: translate(var(--pixel), var(--pixel));
+  box-shadow: none;
+}
+.rpg-sprite {
+  flex: none;
+  image-rendering: pixelated;
+  background-repeat: no-repeat;
+}
+.rpg-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.rpg-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-weight: 600;
+}
+.rpg-systems {
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .game-grid {
   display: grid;
   /* minmax(0, 1fr), not 1fr: keeps a large cover from blowing the track out to its

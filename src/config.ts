@@ -29,6 +29,14 @@ export const REPO_URL = 'https://tangled.org/jeremy.herve.bzh/rolld';
 /** BoardGameGeek home — where the footer's required "Powered by BGG" logo links (D-31, D-53). */
 export const BGG_URL = 'https://boardgamegeek.com';
 
+/**
+ * rpg.actor — the sibling atproto RPG-character app whose public records a profile
+ * card reads and links out to (D-60). Handle-based profile URLs mirror rolld's own
+ * `/@handle`, so the link-out is a one-liner. We only ever read the owner's PDS; this
+ * host is used for the human click-through, not for data.
+ */
+export const RPG_ACTOR_URL = 'https://rpg.actor';
+
 /** Where abuse reports go (D-41, CC-8). The inbox is a maintainer action item. */
 export const ABUSE_EMAIL = 'abuse@rolld.at';
 

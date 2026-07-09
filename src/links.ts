@@ -13,7 +13,7 @@
  * the one `TARGET_FIELD` constant, because the two services format the same field
  * differently and hand-writing them twice is exactly how they drift apart.
  */
-import { COLLECTION, ORIGIN } from './config.js';
+import { COLLECTION, ORIGIN, RPG_ACTOR_URL } from './config.js';
 import type { GameRef } from './records/types.js';
 
 /** The record field that holds the canonical game URL. Frozen (D-9). */
@@ -54,6 +54,9 @@ export const profilePath = (handle: string): string => `/@${handle}`;
 export const playsPath = (handle: string): string => `/@${handle}/plays`;
 export const userGamePath = (handle: string, id: string): string => `/@${handle}/g/${id}`;
 export const searchPath = (q: string): string => `/search?q=${encodeURIComponent(q)}`;
+
+/** A person's rpg.actor profile — same `/@handle` shape as rolld's own (D-60). */
+export const rpgActorProfileUrl = (handle: string): string => `${RPG_ACTOR_URL}/@${handle}`;
 
 /** Per-entry permalink path — handle form (the shared/default form, D-14). */
 export const entryPath = (handle: string, kind: EntryKind, rkey: string): string =>

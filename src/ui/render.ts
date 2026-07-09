@@ -7,9 +7,11 @@
  */
 import type { GameMetadata } from '../bgg/types.js';
 import { ABUSE_EMAIL, API_BASE } from '../config.js';
-import { gamePath, profilePath } from '../links.js';
+import { gamePath, profilePath, rpgActorProfileUrl } from '../links.js';
+import type { RpgActorPresence } from '../read/rpgActor.js';
 import type { ImageEmbed } from '../records/types.js';
 import { html, render, type SafeHtml } from './html.js';
+import { externalMark } from './icons.js';
 
 /** Photo blob URL — served through the Worker so the moderation blob-refuse applies (D-41). */
 export function blobUrl(did: string, cid: string): string {
@@ -88,6 +90,44 @@ export function gameLink(id: string, name: string): SafeHtml {
 /** A link to a person's profile by handle. */
 export function profileLink(handle: string, label?: string): SafeHtml {
   return html`<a href="${profilePath(handle)}" data-link>${label ?? `@${handle}`}</a>`;
+}
+
+/**
+ * The sprite portrait for the rpg.actor card: the sheet cropped to its front-idle
+ * frame. The blob is served through rolld's own `blobUrl` proxy (so D-41 blob-refuse
+ * and CORS both apply); the frame maths comes pre-computed from `spriteFrame`. The
+ * URL is `%`-encoded (no quote chars), so the unquoted `url(...)` is XSS-safe.
+ */
+function spritePortrait(did: string, sprite: NonNullable<RpgActorPresence['sprite']>): SafeHtml {
+  const { frame } = sprite;
+  const style = [
+    `width:${frame.frameW}px`,
+    `height:${frame.frameH}px`,
+    `background-image:url(${blobUrl(did, sprite.cid)})`,
+    `background-size:${frame.sheetW}px ${frame.sheetH}px`,
+    `background-position:${frame.offsetX}px ${frame.offsetY}px`,
+  ].join(';');
+  return html`<span class="rpg-sprite" style="${style}" aria-hidden="true"></span>`;
+}
+
+/**
+ * The "also on rpg.actor" card (D-60) — a slim strip linking out to the person's
+ * RPG-character presence on the sibling atproto app. Read-only, and only rendered
+ * when `presence` is non-null (the fetch returns null for anyone not on rpg.actor),
+ * so it stays dormant on every other profile. Names up to three systems, then a
+ * casual "+N more"; a sprite-only presence shows just the portrait and the lead.
+ */
+export function rpgActorCard(did: string, handle: string, presence: RpgActorPresence): SafeHtml {
+  const names = presence.systems.slice(0, 3).map((s) => s.name);
+  const extra = presence.systems.length - names.length;
+  const detail = names.length ? `${names.join(' · ')}${extra > 0 ? ` +${extra} more` : ''}` : '';
+  return html`<a class="rpg-card" href="${rpgActorProfileUrl(handle)}" target="_blank" rel="noopener noreferrer">
+    ${presence.sprite ? spritePortrait(did, presence.sprite) : ''}
+    <span class="rpg-body">
+      <span class="rpg-lead">Also on rpg.actor${externalMark}</span>
+      ${detail ? html`<span class="rpg-systems mono muted">${detail}</span>` : ''}
+    </span>
+  </a>`;
 }
 
 /** The unobtrusive report affordance on every item (CC-8, D-41). */
