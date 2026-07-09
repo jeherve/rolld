@@ -11,6 +11,7 @@ import {
   isReviewEligible,
 } from '../atproto/atstoreEligibility.js';
 import { ATSTORE_LISTING_URI } from '../config.js';
+import { profilePath } from '../links.js';
 import type { PageCtx, SessionInfo } from './context.js';
 import { html, type SafeHtml } from './html.js';
 import { avatar } from './render.js';
@@ -24,6 +25,7 @@ export function renderAccountMenu(session: SessionInfo): SafeHtml {
         <span class="mono">@${session.handle}</span>
       </button>
       <div class="account-menu" role="menu" hidden>
+        <a href="${profilePath(session.handle)}" data-link role="menuitem">Your profile</a>
         <a href="/settings" data-link role="menuitem">Settings</a>
         <button type="button" role="menuitem" data-account-signout>Log out</button>
       </div>

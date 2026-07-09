@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { render } from '../src/ui/html.js';
 import { renderHeader } from '../src/ui/header.js';
+import { renderAccountMenu } from '../src/ui/accountMenu.js';
+import type { SessionInfo } from '../src/ui/context.js';
 import { renderFooter } from '../src/ui/footer.js';
 import { diceLoader, emptyState, errorState } from '../src/ui/states.js';
 import { REPO_URL, AUTHOR_PROFILE_URL, BGG_URL } from '../src/config.js';
@@ -22,6 +24,26 @@ describe('renderHeader', () => {
     const root = mount(renderHeader({ session: null }));
     expect(root.querySelector('.wordmark .l1')).not.toBeNull();
     expect(root.querySelector('.wordmark .l2')).not.toBeNull();
+  });
+});
+
+describe('renderAccountMenu', () => {
+  const session = {
+    agent: {} as never,
+    did: 'did:plc:abc',
+    handle: 'jane.example',
+    pds: 'https://pds.example',
+  } satisfies SessionInfo;
+
+  it('links to the signed-in user’s own profile (D-59 regression)', () => {
+    const root = mount(renderAccountMenu(session));
+    expect(root.querySelector('a[href="/@jane.example"]')).not.toBeNull();
+  });
+
+  it('keeps Settings and Log out', () => {
+    const root = mount(renderAccountMenu(session));
+    expect(root.querySelector('a[href="/settings"]')).not.toBeNull();
+    expect(root.querySelector('[data-account-signout]')).not.toBeNull();
   });
 });
 
