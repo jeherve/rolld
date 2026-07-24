@@ -69,7 +69,7 @@ export function playersSummary(play: PlayRecord): string | null {
  * affordance is hidden on it rather than pointing at nothing.
  */
 export function hasReportableContent(record: NoteFields & { images?: ImageEmbed[] }): boolean {
-  const hasNote = Boolean(record.content?.text.markdown.trim() || record.textContent?.trim());
+  const hasNote = Boolean(record.content?.text?.markdown?.trim() || record.textContent?.trim());
   const hasPhotos = Boolean(record.images?.length);
   return hasNote || hasPhotos;
 }
