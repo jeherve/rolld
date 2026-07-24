@@ -149,13 +149,27 @@ async function serveBlob(request: Request, env: Env, did: string, cid: string): 
   if (!idRes.ok) return errorJson(request, 404, 'NotFound', 'Unknown identity.');
   const pds = ((await idRes.json()) as { pds?: string }).pds;
   // The PDS endpoint comes from the (attacker-controllable) identity doc — validate
-  // it before fetching so the Worker can't be used as an SSRF proxy (Sec#1).
+  // it before fetching so the Worker can't be used as an SSRF proxy (Sec#1, F3).
   const pdsOrigin = pds ? safeUpstreamOrigin(pds) : null;
-  if (!pdsOrigin) return errorJson(request, 404, 'NotFound', 'No usable PDS for this identity.');
+  // safeUpstreamOrigin already rejects non-https, IP-literal and localhost hosts; also
+  // pin the port to the https default (443). A validated hostname on a non-standard port
+  // (e.g. :22, :6379) is still a reachable internal service in the edge runtime (F3).
+  if (!pdsOrigin || new URL(pdsOrigin).port !== '') {
+    return errorJson(request, 404, 'NotFound', 'No usable PDS for this identity.');
+  }
 
   const blobRes = await fetch(
     `${pdsOrigin}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`,
+    { redirect: 'manual' },
   );
+  // The origin check only guards the FIRST hop. With the default redirect: 'follow' a
+  // compliant-looking PDS could 3xx this edge fetch to an internal/arbitrary host and
+  // stream that body back (SSRF, F3, CWE-918). redirect: 'manual' returns the 3xx here
+  // rather than following it; the edge runtime can't re-resolve a redirect target's IP,
+  // so pin the fetch to one hop and refuse any redirect.
+  if (blobRes.status >= 300 && blobRes.status < 400) {
+    return errorJson(request, 404, 'NotFound', 'This image is not available on rolld.');
+  }
   // The blob's stored mime type is attacker-controlled, and this Worker is served on
   // the app's own origin — so a user could upload an HTML "image" and get it served as
   // text/html (stored XSS). Clamp to an image allowlist, refuse to sniff, and sandbox
