@@ -21,10 +21,12 @@ import {
   gameDistinctPlayers,
   gamePlays,
   gameTotalPlays,
+  linkingRecordUri,
   playCountByDids,
 } from '../read/constellation.js';
 import { buildFriendsFeed } from '../read/friends.js';
 import { resolveMiniDoc } from '../read/identity.js';
+import { checkBlocked, dropBlocked, isHidden } from '../read/moderation.js';
 import { renderMarkdown } from '../read/markdown-render.js';
 import { getRecordValue, listAllPlays, listAllRatings, pdsClient } from '../read/repo.js';
 import { fetchRpgActorPresence } from '../read/rpgActor.js';
@@ -166,7 +168,10 @@ export function dashboard(ctx: PageCtx): void {
   void (async () => {
     try {
       const feed = await buildFriendsFeed(session.did, session.pds, { followCap: 40 });
-      if (feed.length === 0) {
+      // Enforce the moderation blocklist before anything reaches the DOM (D-41/D-49):
+      // drop plays from blocked authors or individually taken-down records.
+      const visible = await dropBlocked(feed, { did: (f) => f.authorDid, uri: (f) => f.uri });
+      if (visible.length === 0) {
         render(
           feedEl,
           emptyState({
@@ -179,12 +184,12 @@ export function dashboard(ctx: PageCtx): void {
       // Author identities and game metadata are independent fan-outs — run them
       // together so the dashboard waits on the slower of the two, not their sum.
       const [authors, metas] = await Promise.all([
-        loadAuthors(feed.map((f) => f.authorDid)),
-        resolveGames(feed.map((f) => f.play.game.id)),
+        loadAuthors(visible.map((f) => f.authorDid)),
+        resolveGames(visible.map((f) => f.play.game.id)),
       ]);
       render(
         feedEl,
-        html`${feed.map((item) =>
+        html`${visible.map((item) =>
           feedCard({
             play: item.play,
             rkey: item.rkey,
@@ -195,8 +200,8 @@ export function dashboard(ctx: PageCtx): void {
         )}`,
       );
       // Live tail (D-26): prepend plays from follows as they arrive, while open.
-      const followDids = [...new Set(feed.filter((f) => !f.isOwn).map((f) => f.authorDid))];
-      startLiveTail(ctx, feedEl, followDids, new Set(feed.map((f) => f.uri)));
+      const followDids = [...new Set(visible.filter((f) => !f.isOwn).map((f) => f.authorDid))];
+      startLiveTail(ctx, feedEl, followDids, new Set(visible.map((f) => f.uri)));
     } catch {
       render(feedEl, loadError());
     }
@@ -234,6 +239,8 @@ async function prependLivePlay(ctx: PageCtx, feedEl: HTMLElement, uri: string): 
   if (!doc) return;
   const play = await getRecordValue<PlayRecord>(pdsClient(doc.pds), did, COLLECTION.play, rkey);
   if (!play) return;
+  // A blocked author/record must not slip in via the live tail either (D-41/D-49).
+  if (await isHidden(did, uri)) return;
   const [authors, metas] = await Promise.all([loadAuthors([did]), resolveGames([play.game.id])]);
   const card = document.createElement('div');
   card.className = 'live-new';
@@ -359,13 +366,18 @@ export function gamePlaysList(ctx: PageCtx, bggId: string): void {
   const el = ctx.main.querySelector<HTMLElement>('#gp')!;
   void (async () => {
     const pageData = await gamePlays(target, { limit: 50 });
-    const authors = await loadAuthors(pageData.records.map((r) => r.did));
+    // Drop blocked authors/records before listing them (D-41/D-49).
+    const records = await dropBlocked(pageData.records, {
+      did: (r) => r.did,
+      uri: (r) => linkingRecordUri(r),
+    });
+    const authors = await loadAuthors(records.map((r) => r.did));
     render(
       el,
       html`<h1>Plays of this game</h1>
-        ${pageData.records.length === 0
+        ${records.length === 0
           ? emptyState({ title: 'No plays logged yet', body: 'Be the first to log a play of this game.' })
-          : html`${pageData.records.map((r) => {
+          : html`${records.map((r) => {
               const a = authors.get(r.did);
               return html`<div class="record mono">
                 <a href="${entryPath(a?.handle ?? r.did, 'play', r.rkey)}" data-link>${a?.displayName ?? `@${a?.handle ?? r.did}`}</a>
@@ -389,6 +401,11 @@ export function profile(ctx: PageCtx, handle: string): void {
     // Canonical-handle redirect (D-14): if the current handle differs, freshen the URL.
     if (doc.handle !== handle && doc.handle !== 'handle.invalid') {
       ctx.replace(profilePath(doc.handle));
+    }
+    // A blocked author is taken down everywhere on rolld (D-41/D-49) — hide the page.
+    if (await isHidden(doc.did)) {
+      render(el, emptyState({ motif: '📦', title: "This profile isn't available" }));
+      return;
     }
     const [bio, plays, ratings] = await Promise.all([
       getProfile(appview, doc.did),
@@ -504,11 +521,19 @@ export function playLog(ctx: PageCtx, handle: string): void {
       return;
     }
     const plays = await listAllPlays(pdsClient(doc.pds), doc.did);
-    if (plays.length === 0) {
+    // Moderation (D-41/D-49): a blocked author hides the whole log; otherwise drop any
+    // individually taken-down records. One round-trip names the author + every record.
+    const modSet = await checkBlocked({ dids: [doc.did], uris: plays.map((r) => r.uri) });
+    if (modSet.dids.has(doc.did)) {
+      render(el, html`<h1>@${doc.handle}'s plays</h1>${emptyState({ motif: '📦', title: "This log isn't available" })}`);
+      return;
+    }
+    const visible = plays.filter((r) => !modSet.uris.has(r.uri));
+    if (visible.length === 0) {
       render(el, html`<h1>@${doc.handle}'s plays</h1>${emptyState({ title: 'No plays yet', body: 'When they log a game, it shows up here.' })}`);
       return;
     }
-    const sorted = [...plays].sort((a, b) => b.value.playedAt.localeCompare(a.value.playedAt));
+    const sorted = [...visible].sort((a, b) => b.value.playedAt.localeCompare(a.value.playedAt));
     const metas = await resolveGames(sorted.map((r) => r.value.game.id));
     const author: FeedAuthor = { did: doc.did, handle: doc.handle };
     render(
@@ -543,6 +568,14 @@ function renderEntry(ctx: PageCtx, kind: 'play' | 'rating', identifier: string, 
       ctx.replace(entryPath(doc.handle, kind, rkey));
     }
     const collection = kind === 'play' ? COLLECTION.play : COLLECTION.rating;
+    // Moderation gate (D-41/D-49): a taken-down author or record renders as the
+    // same "not available" state as a missing one — so it never reveals it was
+    // blocked, and we don't even fetch the blocked record from the PDS.
+    const uri = `at://${doc.did}/${collection}/${rkey}`;
+    if (await isHidden(doc.did, uri)) {
+      render(el, emptyState({ motif: '📦', title: "This entry isn't available" }));
+      return;
+    }
     const client = pdsClient(doc.pds);
     const value = await getRecordValue<EntryValue>(client, doc.did, collection, rkey);
     if (!value) {
@@ -641,11 +674,19 @@ export function userGame(ctx: PageCtx, handle: string, bggId: string): void {
       getRecordValue<RatingRecord>(client, doc.did, COLLECTION.rating, bggId),
       resolveGame(bggId),
     ]);
+    // Moderation (D-41/D-49): hide the page for a blocked author, else drop any
+    // individually taken-down plays before listing them.
+    const modSet = await checkBlocked({ dids: [doc.did], uris: plays.map((r) => r.uri) });
+    if (modSet.dids.has(doc.did)) {
+      render(el, html`<h1>@${doc.handle} · ${meta?.name ?? `Game ${bggId}`}</h1>${emptyState({ motif: '📦', title: "This page isn't available" })}`);
+      return;
+    }
+    const visiblePlays = plays.filter((r) => !modSet.uris.has(r.uri));
     render(
       el,
       html`<h1>@${doc.handle} · ${meta?.name ?? `Game ${bggId}`}</h1>
-        <p class="mono muted">${countNoun(timesPlayed(plays.map((r) => r.value), bggId), 'play')}${rating ? html` · graded ${gradeBadge(rating.rating)}` : ''}</p>
-        ${plays.map((r) => html`<div class="record mono"><a href="${entryPath(doc.handle, 'play', r.rkey)}" data-link>${formatDate(r.value.playedAt)} · ${relativeTime(r.value.playedAt)}</a></div>`)}`,
+        <p class="mono muted">${countNoun(timesPlayed(visiblePlays.map((r) => r.value), bggId), 'play')}${rating ? html` · graded ${gradeBadge(rating.rating)}` : ''}</p>
+        ${visiblePlays.map((r) => html`<div class="record mono"><a href="${entryPath(doc.handle, 'play', r.rkey)}" data-link>${formatDate(r.value.playedAt)} · ${relativeTime(r.value.playedAt)}</a></div>`)}`,
     );
   })().catch(() => render(el, loadError()));
 }
