@@ -19,7 +19,13 @@ import { escapeHtml } from '../ui/html.js';
 
 /** A url is safe if it has no scheme (relative/anchor) or an http(s)/mailto scheme. */
 function safeHref(escapedUrl: string): string | null {
-  const url = escapedUrl.trim();
+  // Strip ASCII control chars (0x00-0x1F) and DEL, then trim whitespace, BEFORE the
+  // scheme test. A browser silently drops a leading control char when it navigates, so
+  // "\x01javascript:" would slip a live scheme past the start-anchored regex below (it
+  // fails to match because the string starts with a non-letter) and reach the href
+  // unchanged. Cleaning first means the scheme allowlist sees the scheme the browser
+  // will (D-20; CWE-79).
+  const url = escapedUrl.replace(/[\u0000-\u001f\u007f]/g, '').trim();
   const scheme = url.match(/^([a-z][a-z0-9+.-]*):/i);
   if (scheme && !/^(https?|mailto)$/i.test(scheme[1]!)) return null;
   return url;
