@@ -99,6 +99,22 @@ describe('hasReportableContent', () => {
   it('ignores whitespace-only notes', () => {
     expect(hasReportableContent(play({ textContent: '   ' }))).toBe(false);
   });
+  it("doesn't throw on a foreign record whose content lacks text/markdown (untrusted PDS, no schema validation)", () => {
+    // A followed user's PDS can hand back a `content` object missing its nested
+    // `text` (or `text.markdown`) — the read path does no runtime validation, so
+    // the access chain must not assume the shape or it takes the whole feed down.
+    expect(hasReportableContent(play({ content: {} as unknown as PlayRecord['content'] }))).toBe(false);
+    expect(
+      hasReportableContent(
+        play({ content: { $type: 'at.markpub.markdown' } as unknown as PlayRecord['content'] }),
+      ),
+    ).toBe(false);
+    expect(
+      hasReportableContent(
+        play({ content: { $type: 'at.markpub.markdown', text: {} } as unknown as PlayRecord['content'] }),
+      ),
+    ).toBe(false);
+  });
 });
 
 describe('winnerSummary', () => {

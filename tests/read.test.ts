@@ -184,10 +184,25 @@ describe('renderMarkdown — sanitization (D-20)', () => {
     expect(html).not.toContain('<a ');
   });
 
+  it('neutralizes a javascript: link hidden behind a leading control char', () => {
+    // A C0 control byte (0x01) that trim() leaves in place must not sneak the scheme
+    // past the start-anchored check; the browser would strip it and run the script.
+    const html = renderMarkdown('[click me](\u0001javascript:alert(1))');
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('\u0001');
+    expect(html).not.toContain('<a ');
+    expect(html).toContain('click me');
+  });
+
   it('renders a safe http link with noopener/nofollow', () => {
     const html = renderMarkdown('see [rolld](https://rolld.at/about)');
     expect(html).toContain('<a href="https://rolld.at/about"');
     expect(html).toContain('rel="noopener noreferrer nofollow"');
+  });
+
+  it('keeps a mailto: link', () => {
+    const html = renderMarkdown('mail [me](mailto:hi@rolld.at)');
+    expect(html).toContain('<a href="mailto:hi@rolld.at"');
   });
 
   it('renders bold, italic, inline code and a heading', () => {

@@ -19,6 +19,23 @@ interface ResolvedUser {
   pds: string;
 }
 
+/**
+ * Harden the PDS origin resolved from an attacker-controllable MiniDoc before we
+ * fetch it. `safeUpstreamOrigin` already requires https and rejects IP-literal /
+ * localhost / single-label hosts; on top of that we refuse any explicit non-443
+ * port, since a port is another way a self-chosen PDS could aim the Worker at an
+ * internal service (e.g. `https://host:8080`). Returns the safe bare origin, or
+ * null if it must not be fetched. Kept local to the feed path (Sec#1).
+ */
+function safeFeedPds(raw: string): string | null {
+  const origin = safeUpstreamOrigin(raw);
+  if (!origin) return null;
+  // `URL.port` is '' for the default https port (443, explicit or implicit) and is
+  // only populated when the endpoint named a different one — reject those.
+  if (new URL(origin).port !== '') return null;
+  return origin;
+}
+
 async function resolveUser(identifier: string): Promise<ResolvedUser | null> {
   const res = await fetch(
     `${SLINGSHOT}/xrpc/blue.microcosm.identity.resolveMiniDoc?identifier=${encodeURIComponent(identifier)}`,
@@ -27,7 +44,7 @@ async function resolveUser(identifier: string): Promise<ResolvedUser | null> {
   const d = (await res.json()) as { did?: string; handle?: string; pds?: string };
   // The PDS endpoint is attacker-controllable (the user picks it); validate it so
   // the feed reader can't be turned into an SSRF proxy either (Sec#1).
-  const pds = d.pds ? safeUpstreamOrigin(d.pds) : null;
+  const pds = d.pds ? safeFeedPds(d.pds) : null;
   if (!d.did || !d.handle || !pds) return null;
   return { did: d.did, handle: d.handle, pds };
 }
@@ -45,7 +62,13 @@ interface RawRecord {
 
 async function listRecords(pds: string, did: string, collection: string): Promise<RawRecord[]> {
   const url = `${pds}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=${collection}&limit=50`;
-  const res = await fetch(url);
+  // `pds` came from an attacker-controllable MiniDoc, and fetch does not re-validate
+  // a redirect's Location against safeFeedPds — so following a 3xx would let the
+  // resolved PDS bounce this request to an internal/arbitrary URL, past the origin
+  // guard. Don't follow redirects; treat a 3xx (or any non-2xx) as "no records"
+  // (Sec#1, matching the blob path's redirect handling).
+  const res = await fetch(url, { redirect: 'manual' });
+  if (res.status >= 300 && res.status < 400) return [];
   if (!res.ok) return [];
   return ((await res.json()) as { records?: RawRecord[] }).records ?? [];
 }

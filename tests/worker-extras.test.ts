@@ -186,6 +186,58 @@ describe('worker moderation + feed routes', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  // Regression (F3, CWE-918): the origin check only guards the FIRST hop. A
+  // compliant-looking public PDS that 3xx-redirects the getBlob fetch must NOT be
+  // followed — otherwise it can bounce the edge fetch to an internal host and stream
+  // that body back. The proxy pins the fetch to one hop and refuses the redirect.
+  it('refuses a blob when the PDS 3xx-redirects the getBlob fetch (no SSRF via redirect)', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const u = String(input);
+      if (u.includes('resolveMiniDoc')) {
+        return new Response(
+          JSON.stringify({ did: 'did:plc:x', handle: 'x.test', pds: 'https://pds.test' }),
+          { status: 200 },
+        );
+      }
+      // The PDS answers getBlob with a redirect toward the cloud metadata endpoint.
+      return new Response(null, {
+        status: 302,
+        headers: { Location: 'https://169.254.169.254/latest/meta-data/' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    const res = await worker.fetch(
+      new Request('https://rolld.at/api/blob/did:plc:x/bafy'),
+      env(fakeKv()),
+    );
+    expect(res.status).toBe(404);
+    // resolveMiniDoc + the single getBlob hop only; the redirect target is never fetched.
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  // Regression (F3): a validated hostname on a non-standard port is still a reachable
+  // internal service in the edge runtime; the blob proxy pins the port to https default.
+  it('refuses to fetch a blob from a PDS on a non-standard port', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const u = String(input);
+      if (u.includes('resolveMiniDoc')) {
+        return new Response(
+          JSON.stringify({ did: 'did:plc:x', handle: 'x.test', pds: 'https://pds.test:6379' }),
+          { status: 200 },
+        );
+      }
+      throw new Error('SSRF: getBlob must never be fetched for a bad-port PDS');
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    const res = await worker.fetch(
+      new Request('https://rolld.at/api/blob/did:plc:x/bafy'),
+      env(fakeKv()),
+    );
+    expect(res.status).toBe(404);
+    // resolveMiniDoc was the only fetch; getBlob was never reached.
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   describe('safeUpstreamOrigin (SSRF guard)', () => {
     it('accepts a normal https PDS and returns its bare origin', () => {
       expect(safeUpstreamOrigin('https://pds.example.com/some/path?x=1')).toBe('https://pds.example.com');
@@ -238,6 +290,88 @@ describe('worker moderation + feed routes', () => {
     const xml = await res.text();
     expect(xml).toContain('<title>Played Catan</title>');
     expect(xml).toContain('https://rolld.at/@me.test/play/3k');
+  });
+
+  // Regression (Sec#1): the PDS endpoint comes from an attacker-controllable
+  // MiniDoc, exactly like the blob path. The feed's listRecords fetch must NOT
+  // follow a 3xx — a redirect Location is not re-validated, so following it would
+  // bounce the Worker to an internal/arbitrary URL (SSRF).
+  it('does not follow a 3xx redirect from the PDS on the feed path (SSRF guard)', async () => {
+    const calls: string[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const u = String(input);
+      calls.push(u);
+      if (u.includes('resolveMiniDoc')) {
+        return new Response(
+          JSON.stringify({ did: 'did:plc:me', handle: 'me.test', pds: 'https://pds.test' }),
+          { status: 200 },
+        );
+      }
+      if (u.includes('listRecords')) {
+        // We must ask the runtime not to follow the redirect ourselves.
+        expect(init?.redirect).toBe('manual');
+        // The PDS tries to bounce the Worker to the cloud metadata endpoint.
+        return new Response(null, {
+          status: 302,
+          headers: { Location: 'https://169.254.169.254/internal' },
+        });
+      }
+      throw new Error(`SSRF: followed redirect to ${u}`);
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+
+    const res = await worker.fetch(
+      new Request('https://rolld.at/api/@me.test/feed.xml'),
+      env(fakeKv()),
+    );
+    // The feed still renders (as an empty feed); the redirect target was never fetched.
+    expect(res.status).toBe(200);
+    expect(calls.some((u) => u.includes('169.254.169.254'))).toBe(false);
+  });
+
+  // Regression (Sec#1): a self-chosen PDS on a non-443 port is another way to aim
+  // the Worker at an internal service — reject it before ever fetching listRecords.
+  it('rejects a PDS on a non-443 port on the feed path (SSRF guard)', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const u = String(input);
+      if (u.includes('resolveMiniDoc')) {
+        return new Response(
+          JSON.stringify({ did: 'did:plc:me', handle: 'me.test', pds: 'https://pds.test:8080' }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`SSRF: listRecords must not be fetched for an unsafe PDS (${u})`);
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    const res = await worker.fetch(
+      new Request('https://rolld.at/api/@me.test/feed.xml'),
+      env(fakeKv()),
+    );
+    expect(res.status).toBe(404);
+    // resolveMiniDoc was the only fetch; listRecords was never reached.
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  // Regression (Sec#1): an IP-literal PDS (here the metadata IP) must be rejected on
+  // the feed path too, relying on safeUpstreamOrigin the same way the blob path does.
+  it('refuses to read records from an unsafe (IP-literal) PDS on the feed path', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const u = String(input);
+      if (u.includes('resolveMiniDoc')) {
+        return new Response(
+          JSON.stringify({ did: 'did:web:evil', handle: 'evil.test', pds: 'https://169.254.169.254' }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`SSRF: listRecords must not be fetched for an unsafe PDS (${u})`);
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+    const res = await worker.fetch(
+      new Request('https://rolld.at/api/@evil.test/feed.xml'),
+      env(fakeKv()),
+    );
+    expect(res.status).toBe(404);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('does not serve the feed at the un-prefixed /@<handle>/feed.xml (D-54)', async () => {

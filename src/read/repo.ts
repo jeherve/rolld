@@ -26,6 +26,8 @@ export interface RepoRecord<T> {
 export interface ListPage<T> {
   records: RepoRecord<T>[];
   cursor?: string;
+  /** Raw records the PDS returned this page, before any `game` guard drops. */
+  fetched: number;
 }
 
 /** A read-only client against a specific PDS (for public reads). */
@@ -34,6 +36,25 @@ export function pdsClient(pdsUrl: string): Client {
 }
 
 const rkeyOf = (uri: string): string => uri.slice(uri.lastIndexOf('/') + 1);
+
+/** Play and rating records both require a `game` snapshot the read/render path derefs. */
+const isGameBearing = (collection: string): boolean =>
+  collection === COLLECTION.play || collection === COLLECTION.rating;
+
+/**
+ * Does a value carry a usable `at.rolld.defs#gameRef` snapshot? Records listed/read
+ * from a foreign PDS are cast `as T` here with no lexicon re-validation (see the
+ * module header), so a malicious or broken writer can omit the lexicon-required
+ * `game` object. Every downstream `play.game.id` / `play.game.name` would then throw
+ * a `TypeError` and take down a whole feed or page region (CWE-476). We keep only
+ * records whose `game` is an object with string `id` and `name` and drop the rest at
+ * this read boundary — one bad record degrades to a skipped card, mirroring the
+ * other defensive read guards (`asTime`, `playPhotos`, `posInt`).
+ */
+function hasGameRef(value: unknown): boolean {
+  const game = (value as { game?: { id?: unknown; name?: unknown } } | null | undefined)?.game;
+  return typeof game?.id === 'string' && typeof game?.name === 'string';
+}
 
 /** Generic `listRecords` against a repo, mapped to typed `RepoRecord`s. */
 export async function listRecords<T>(
@@ -53,13 +74,18 @@ export async function listRecords<T>(
       ...(opts.signal ? { signal: opts.signal } : {}),
     }),
   );
+  const records = data.records.map((r) => ({
+    uri: r.uri,
+    cid: r.cid,
+    rkey: rkeyOf(r.uri),
+    value: r.value as T,
+  }));
   return {
-    records: data.records.map((r) => ({
-      uri: r.uri,
-      cid: r.cid,
-      rkey: rkeyOf(r.uri),
-      value: r.value as T,
-    })),
+    // Drop foreign play/rating records that lack a valid `game` before any caller
+    // dereferences `game.id`/`game.name` (see `hasGameRef`). Non-game collections
+    // (e.g. `at.rolld.profile`, rpg.actor stats) pass through untouched.
+    records: isGameBearing(collection) ? records.filter((r) => hasGameRef(r.value)) : records,
+    fetched: data.records.length,
     ...(data.cursor ? { cursor: data.cursor } : {}),
   };
 }
@@ -93,6 +119,7 @@ export async function listAllRecords<T>(
   const max = opts.max ?? 5000;
   const out: RepoRecord<T>[] = [];
   let cursor: string | undefined;
+  let scanned = 0;
   do {
     const page = await listRecords<T>(client, repo, collection, {
       limit: pageLimit,
@@ -100,9 +127,14 @@ export async function listAllRecords<T>(
       ...(opts.signal ? { signal: opts.signal } : {}),
     });
     out.push(...page.records);
-    // A page with no records ends the walk even if the PDS still hands back a cursor.
-    cursor = page.records.length > 0 ? page.cursor : undefined;
-  } while (cursor && out.length < max);
+    scanned += page.fetched;
+    // Key the walk on what the PDS actually returned this page (`fetched`, before the
+    // `game` guard), not on `page.records.length`: a full page that all fails the guard
+    // filters to zero, and stopping on that would silently truncate the log at the first
+    // run of malformed records. A genuinely empty page still ends the walk; `scanned`
+    // (raw records seen) bounds a PDS that keeps handing back a cursor over empty pages.
+    cursor = page.fetched > 0 ? page.cursor : undefined;
+  } while (cursor && scanned < max);
   return out;
 }
 
@@ -132,7 +164,12 @@ export async function getRecordValue<T>(
         params: { repo: repo as ActorIdentifier, collection: collection as Nsid, rkey },
       }),
     );
-    return data.value as T;
+    const value = data.value as T;
+    // A foreign play/rating record missing its `game` snapshot would crash every
+    // render path that derefs it (entry permalink, live-tail card); treat it as
+    // "not available" rather than let the `TypeError` bubble up (see `hasGameRef`).
+    if (isGameBearing(collection) && !hasGameRef(value)) return null;
+    return value;
   } catch {
     return null;
   }
