@@ -26,6 +26,8 @@ export interface RepoRecord<T> {
 export interface ListPage<T> {
   records: RepoRecord<T>[];
   cursor?: string;
+  /** Raw records the PDS returned this page, before any `game` guard drops. */
+  fetched: number;
 }
 
 /** A read-only client against a specific PDS (for public reads). */
@@ -83,6 +85,7 @@ export async function listRecords<T>(
     // dereferences `game.id`/`game.name` (see `hasGameRef`). Non-game collections
     // (e.g. `at.rolld.profile`, rpg.actor stats) pass through untouched.
     records: isGameBearing(collection) ? records.filter((r) => hasGameRef(r.value)) : records,
+    fetched: data.records.length,
     ...(data.cursor ? { cursor: data.cursor } : {}),
   };
 }
@@ -116,6 +119,7 @@ export async function listAllRecords<T>(
   const max = opts.max ?? 5000;
   const out: RepoRecord<T>[] = [];
   let cursor: string | undefined;
+  let scanned = 0;
   do {
     const page = await listRecords<T>(client, repo, collection, {
       limit: pageLimit,
@@ -123,9 +127,14 @@ export async function listAllRecords<T>(
       ...(opts.signal ? { signal: opts.signal } : {}),
     });
     out.push(...page.records);
-    // A page with no records ends the walk even if the PDS still hands back a cursor.
-    cursor = page.records.length > 0 ? page.cursor : undefined;
-  } while (cursor && out.length < max);
+    scanned += page.fetched;
+    // Key the walk on what the PDS actually returned this page (`fetched`, before the
+    // `game` guard), not on `page.records.length`: a full page that all fails the guard
+    // filters to zero, and stopping on that would silently truncate the log at the first
+    // run of malformed records. A genuinely empty page still ends the walk; `scanned`
+    // (raw records seen) bounds a PDS that keeps handing back a cursor over empty pages.
+    cursor = page.fetched > 0 ? page.cursor : undefined;
+  } while (cursor && scanned < max);
   return out;
 }
 

@@ -51,6 +51,30 @@ describe('repo read guard — drops foreign records missing a valid `game` (CWE-
     expect(all.map((r) => r.rkey)).toEqual(['g1', 'g4']);
   });
 
+  it('listAllPlays keeps paginating past a page that filters entirely to gameless records', async () => {
+    // Regression: a full page whose records all fail the `game` guard filters to zero.
+    // The walk must not read that as "repo exhausted" — it has to follow the cursor to
+    // the next page, or a run of malformed records silently truncates the whole log.
+    const client = pagedClient([
+      { records: [gameless(1), gameless(2), gameless(3)], cursor: 'c1' },
+      { records: [good(4)] },
+    ]);
+    const all = await listAllPlays(client, 'did:plc:me');
+    expect(all.map((r) => r.rkey)).toEqual(['g4']);
+  });
+
+  it('listAllPlays stops when the PDS returns a genuinely empty page', async () => {
+    // The other half of the guard: an empty page ends the walk even with a cursor, so a
+    // PDS handing back an endless cursor over empty pages can't spin forever.
+    const client = pagedClient([
+      { records: [good(1)], cursor: 'c1' },
+      { records: [], cursor: 'c2' },
+      { records: [good(9)], cursor: 'c3' },
+    ]);
+    const all = await listAllPlays(client, 'did:plc:me');
+    expect(all.map((r) => r.rkey)).toEqual(['g1']);
+  });
+
   it('getRecordValue returns null for a play whose `game` is missing', async () => {
     const client = { get: vi.fn(async () => ({ ok: true, data: { value: gameless(1).value } })) } as unknown as Client;
     expect(await getRecordValue(client, 'did:plc:me', COLLECTION.play, 'x1')).toBeNull();
