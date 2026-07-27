@@ -48,10 +48,15 @@ reads come from Constellation, and there's mostly no server to run.
      └─ optional share            ── feed post ──▶ links to the entry permalink
 ```
 
-The only server-side piece is a stateless Cloudflare Worker (`worker/`). It's the sole
+The main server-side piece is a stateless Cloudflare Worker (`worker/`). It's the sole
 gateway to BoardGameGeek — it holds the BGG token as a secret and injects it server-side, so
 the browser never calls BGG. It also serves per-user RSS feeds and enforces the moderation
-blocklist. Everything else runs in the browser.
+blocklist.
+
+The other one is a small Pages middleware (`functions/`) that adds
+[`at:` meta tags](https://tangled.org/chrisshank.com/at-tags/) to the pages that render a
+record, so any tool can walk from a rolld URL back to the record on your PDS and open it with
+whatever app it likes. Everything else runs in the browser.
 
 ## Lexicons (`at.rolld.*`)
 
@@ -126,6 +131,11 @@ npm run deploy       # build + wrangler pages deploy dist --project-name=rolld -
 
 The `--branch` flag matters: only deployments matching your project's production branch get
 promoted to the live site. Adjust the project name and branch for your own setup.
+
+Wrangler picks up `functions/` from the repo root on its own, so the middleware ships with the
+same command. To try it locally, `npm run build && npx wrangler pages dev dist`; plain
+`npm run dev` serves the Vite SPA without it, so the `at:` tags only appear after client-side
+routing.
 
 ## License
 

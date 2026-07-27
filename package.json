@@ -13,7 +13,7 @@
     "deploy": "npm run build && wrangler pages deploy dist --project-name=rolld --branch=trunk",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p worker/tsconfig.json --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p worker/tsconfig.json --noEmit && tsc -p functions/tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:lexicons": "tsx scripts/lexicon-validate.ts",
     "check:lexicons": "bash scripts/check-lexicons.sh",

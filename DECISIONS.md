@@ -936,3 +936,37 @@ failing soft rather than trusting a shape. It adds two PDS reads per profile vie
 when the placeholder isn't there. And the card leans on rpg.actor's `/@handle` URLs and its RPG
 Maker sprite-sheet convention staying put; if either moves, it's the link or the crop that breaks,
 never the profile itself.
+
+### D-61 — `at:` meta tags, stamped into the HTML at the edge
+
+Chris Shank wrote up a small community proposal, [at-tags](https://tangled.org/chrisshank.com/at-tags/),
+for saying in a page's `<head>` which atproto record that page renders: `at:canonical` for the record
+the page *is*, `at:author` for whose it is, `at:alternate` for records it merely shows. mu.social,
+semble, leaflet, frontpage and aturi.to adopted it within about a day of each other, and there's a PR
+open against the Bluesky app. It costs almost nothing, and it states the thing rolld has been saying
+since D-32: the records belong to the person who wrote them, and rolld is one way of looking at them.
+Not adopting it would have felt strange.
+
+The catch is that rolld is a client-rendered SPA, and the tools this proposal is for fetch a URL and
+parse the HTML; they don't run our JavaScript. Tags added by the app after load would be invisible to
+exactly the readers they're meant for. So they go in server-side, in a Cloudflare Pages middleware
+(`functions/_middleware.ts`) that matches the path, resolves the handle to a DID through Slingshot,
+and appends the tags to `<head>` with HTMLRewriter on the way out. The path-to-record mapping itself
+lives in `src/atTags.ts`, shared with the browser, which re-stamps the head on every client-side
+navigation; an `at:canonical` still pointing at the play you were looking at two clicks ago is worse
+than no tag at all.
+
+Entry permalinks get an `at:canonical` and an `at:author`, in both the handle and the durable
+`/did/…` form (D-14). Profile and per-person pages get `at:author` only, since they're a view of a
+person rather than of one record, and the `at.rolld.profile` declaration isn't what makes the page
+exist (D-25). Game pages get nothing at all: `/g/<bggId>` is a BoardGameGeek catalog page, and the
+plays listed on it are other people's records, so there's no canonical for rolld to claim there.
+`at:me` is skipped too; rolld isn't an account, it's a static site.
+
+Cost accepted: this is the first server-side HTML in the project, and a root middleware runs for
+every request Pages serves, static assets included. Anything that isn't a person or entry page exits
+on the first line, and successful handle lookups are cached at the edge for an hour, so the tax is
+small — but it is one more moving part in an app that had exactly one (the Worker, D-3). The tags are
+also emitted without confirming the record is really there; the URL claims what it claims, and the
+repo remains the source of truth. And the proposal is young, so the property names could still move.
+If they do, it's one file to change.
