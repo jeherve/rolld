@@ -375,6 +375,14 @@ header.bar .hnav a {
   font-size: 0.85rem;
   padding: 0.4rem;
 }
+/* Safari on iOS zooms the whole page when you focus a control smaller than 16px,
+   and the zoom is what shoves a sheet half out of the viewport. Touch gets 16px. */
+@media (pointer: coarse) {
+  .text-input,
+  .text-input.small {
+    font-size: 16px;
+  }
+}
 label.mono {
   display: block;
   font-size: 0.8rem;
@@ -789,10 +797,18 @@ label.mono {
   margin: 1rem 0;
 }
 
-/* ---- bottom sheet (flows; D-35 thumb reach) ------------------------------- */
+/* ---- bottom sheet (flows; D-35 thumb reach) -------------------------------
+   Three bands: a head that holds the title and the ✕, a body that scrolls, and a
+   foot that holds the CTA. Only the middle band moves, so on a phone the way out
+   and the way to submit are always on screen no matter how long the form gets. */
 .sheet-overlay {
   position: fixed;
   inset: 0;
+  /* `vh` on a phone measures the *large* viewport — the one that runs behind the
+     URL bar — so a sheet sized in `vh` hangs its own bottom edge off-screen.
+     `dvh` tracks what's actually visible; the `vh` line is the old-browser floor. */
+  height: 100vh;
+  height: 100dvh;
   background: #000000aa;
   display: flex;
   align-items: flex-end;
@@ -800,19 +816,58 @@ label.mono {
   z-index: 50;
 }
 .sheet {
+  display: flex;
+  flex-direction: column;
   background: var(--panel);
   border-top: var(--pixel) solid var(--accent);
   width: 100%;
   max-width: 560px;
-  max-height: 92vh;
-  overflow-y: auto;
-  padding: 1rem;
+  max-height: 100%;
+  overflow: hidden;
 }
 .sheet-head {
+  flex: 0 0 auto;
   display: flex;
-  align-items: center;
+  /* Top-aligned so the ✕ stays on the title's first line when it wraps. */
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+  padding: 1rem 1rem 0.75rem;
+}
+.sheet-head h2 {
+  margin: 0;
+}
+.sheet-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  /* Don't hand the scroll back to the page behind once the sheet bottoms out. */
+  overscroll-behavior: contain;
+  padding: 0 1rem 1rem;
+}
+.sheet-foot {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 0.3rem;
+  background: var(--panel);
+  border-top: var(--pixel) solid var(--accent);
+  /* Clear of the iPhone home indicator (the page sets viewport-fit=cover). */
+  padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+}
+.sheet-foot[hidden] {
+  display: none;
+}
+/* Landscape phones (and a phone with the keyboard up) have almost no height to
+   spare — shrink the fixed bands so the scrolling one keeps something to show. */
+@media (max-height: 480px) {
+  .sheet-head {
+    padding: 0.6rem 1rem 0.5rem;
+  }
+  .sheet-head h2 {
+    font-size: 1.1rem;
+  }
+  .sheet-foot {
+    padding-top: 0.5rem;
+  }
 }
 .sheet-close {
   background: none;
@@ -820,15 +875,16 @@ label.mono {
   color: var(--text);
   font-size: 1.2rem;
   cursor: pointer;
+  /* A real touch target, not a 20px glyph. */
+  min-width: 44px;
+  min-height: 44px;
 }
 .sheet form {
   display: grid;
   gap: 0.4rem;
 }
 .submit-cta {
-  margin-top: 0.75rem;
-  position: sticky;
-  bottom: 0;
+  width: 100%;
 }
 .add-details summary {
   cursor: pointer;
@@ -974,6 +1030,7 @@ label.mono {
   }
   .sheet-overlay {
     align-items: center;
+    padding: 1.5rem;
   }
   .sheet {
     border: var(--pixel) solid var(--accent);

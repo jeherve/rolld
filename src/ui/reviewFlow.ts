@@ -37,15 +37,17 @@ export function openReviewFlow(ctx: PageCtx, opts: { onReviewed?: () => void } =
         </div>
         <label class="mono" for="review-text">A few words (optional)</label>
         <textarea id="review-text" class="text-input mono" rows="4" maxlength="8000" placeholder="what you like about rolld"></textarea>
-        <button type="submit" class="pixel-btn is-active submit-cta" disabled>Post review</button>
-        <p class="mono small muted" id="review-status"></p>
       </form>
+    `,
+    html`
+      <p class="mono small muted" id="review-status" role="status"></p>
+      <button type="submit" form="review-form" class="pixel-btn is-active submit-cta" disabled>Post review</button>
     `,
   );
 
   let rating = 0;
   const stars = sheet.body.querySelector<HTMLElement>('#stars')!;
-  const submit = sheet.body.querySelector<HTMLButtonElement>('.submit-cta')!;
+  const submit = sheet.foot.querySelector<HTMLButtonElement>('.submit-cta')!;
   for (const btn of stars.querySelectorAll<HTMLButtonElement>('.star-btn')) {
     btn.addEventListener('click', () => {
       rating = Number(btn.dataset.star);
@@ -59,7 +61,7 @@ export function openReviewFlow(ctx: PageCtx, opts: { onReviewed?: () => void } =
   }
 
   const form = sheet.body.querySelector<HTMLFormElement>('#review-form')!;
-  const status = sheet.body.querySelector<HTMLElement>('#review-status')!;
+  const status = sheet.foot.querySelector<HTMLElement>('#review-status')!;
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (rating < 1) return;

@@ -23,10 +23,18 @@ import { html, render, type SafeHtml } from './html.js';
 export interface Sheet {
   root: HTMLElement;
   body: HTMLElement;
+  /** The pinned action bar. Empty and hidden unless `openSheet` got `actions`. */
+  foot: HTMLElement;
   close(): void;
 }
 
-export function openSheet(title: string, content: SafeHtml): Sheet {
+/**
+ * The sheet is three bands: a head, a scrolling body, and an optional foot. Only
+ * the body scrolls, so on a phone the ✕ and the submit button stay on screen
+ * however far the form runs (D-35). Anything you put in `actions` sits in the
+ * foot — a submit button there still drives the form via its `form` attribute.
+ */
+export function openSheet(title: string, content: SafeHtml, actions?: SafeHtml): Sheet {
   const root = document.createElement('div');
   root.className = 'sheet-overlay';
   render(
@@ -37,12 +45,18 @@ export function openSheet(title: string, content: SafeHtml): Sheet {
         <button class="sheet-close" aria-label="Close" data-close>✕</button>
       </div>
       <div class="sheet-body"></div>
+      <div class="sheet-foot" hidden></div>
     </div>`,
   );
   document.body.appendChild(root);
   document.body.style.overflow = 'hidden';
   const body = root.querySelector<HTMLElement>('.sheet-body')!;
   render(body, content);
+  const foot = root.querySelector<HTMLElement>('.sheet-foot')!;
+  if (actions) {
+    render(foot, actions);
+    foot.hidden = false;
+  }
   const close = (): void => {
     root.remove();
     document.body.style.overflow = '';
@@ -51,7 +65,7 @@ export function openSheet(title: string, content: SafeHtml): Sheet {
   root.addEventListener('click', (e) => {
     if (e.target === root) close();
   });
-  return { root, body, close };
+  return { root, body, foot, close };
 }
 
 /* ---- CC-1 game search field -------------------------------------------------- */
@@ -177,9 +191,11 @@ export function openLogFlow(ctx: PageCtx, prefill?: GameRef): void {
         </details>
 
         <label class="share-toggle mono"><input type="checkbox" id="share" /> Share on the Atmosphere</label>
-        <button type="submit" class="pixel-btn is-active submit-cta">Log play</button>
-        <p class="mono small muted" id="log-status"></p>
       </form>
+    `,
+    html`
+      <p class="mono small muted" id="log-status" role="status"></p>
+      <button type="submit" form="log-form" class="pixel-btn is-active submit-cta">Log play</button>
     `,
   );
 
@@ -229,7 +245,8 @@ export function openLogFlow(ctx: PageCtx, prefill?: GameRef): void {
   });
 
   const form = sheet.body.querySelector<HTMLFormElement>('#log-form')!;
-  const status = sheet.body.querySelector<HTMLElement>('#log-status')!;
+  const status = sheet.foot.querySelector<HTMLElement>('#log-status')!;
+  const submit = sheet.foot.querySelector<HTMLButtonElement>('.submit-cta')!;
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!game) {
@@ -237,7 +254,6 @@ export function openLogFlow(ctx: PageCtx, prefill?: GameRef): void {
       return;
     }
     const fd = new FormData(form);
-    const submit = form.querySelector<HTMLButtonElement>('.submit-cta')!;
     submit.disabled = true;
     status.textContent = 'Logging…';
 
@@ -363,9 +379,11 @@ export function openRateFlow(ctx: PageCtx, prefill?: GameRef): void {
         <label class="mono" for="review">Review (optional)</label>
         <textarea id="review" class="text-input mono" rows="4" placeholder="what did you think?"></textarea>
         <label class="share-toggle mono"><input type="checkbox" id="share" /> Share on the Atmosphere</label>
-        <button type="submit" class="pixel-btn is-active submit-cta">Save grade</button>
-        <p class="mono small muted" id="rate-status"></p>
       </form>
+    `,
+    html`
+      <p class="mono small muted" id="rate-status" role="status"></p>
+      <button type="submit" form="rate-form" class="pixel-btn is-active submit-cta">Save grade</button>
     `,
   );
 
@@ -381,7 +399,8 @@ export function openRateFlow(ctx: PageCtx, prefill?: GameRef): void {
   }
 
   const form = sheet.body.querySelector<HTMLFormElement>('#rate-form')!;
-  const status = sheet.body.querySelector<HTMLElement>('#rate-status')!;
+  const status = sheet.foot.querySelector<HTMLElement>('#rate-status')!;
+  const submit = sheet.foot.querySelector<HTMLButtonElement>('.submit-cta')!;
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!game) {
@@ -392,7 +411,6 @@ export function openRateFlow(ctx: PageCtx, prefill?: GameRef): void {
       status.textContent = 'Pick a grade from 1 to 10.';
       return;
     }
-    const submit = form.querySelector<HTMLButtonElement>('.submit-cta')!;
     submit.disabled = true;
     status.textContent = 'Saving…';
     const review = sheet.body.querySelector<HTMLTextAreaElement>('#review')!.value;
@@ -441,8 +459,10 @@ export function openShareModal(ctx: PageCtx, input: ShareInput): void {
     html`
       <textarea id="share-text" class="text-input mono" rows="4">${draft}</textarea>
       <p class="mono small" id="count"></p>
-      <button id="share-post" class="pixel-btn is-active">Post to the Atmosphere</button>
-      <p class="mono small muted" id="share-status"></p>
+    `,
+    html`
+      <p class="mono small muted" id="share-status" role="status"></p>
+      <button id="share-post" class="pixel-btn is-active submit-cta">Post to the Atmosphere</button>
     `,
   );
   const textarea = sheet.body.querySelector<HTMLTextAreaElement>('#share-text')!;
@@ -455,8 +475,8 @@ export function openShareModal(ctx: PageCtx, input: ShareInput): void {
   textarea.addEventListener('input', updateCount);
   updateCount();
 
-  const status = sheet.body.querySelector<HTMLElement>('#share-status')!;
-  const post = sheet.body.querySelector<HTMLButtonElement>('#share-post')!;
+  const status = sheet.foot.querySelector<HTMLElement>('#share-status')!;
+  const post = sheet.foot.querySelector<HTMLButtonElement>('#share-post')!;
   post.addEventListener('click', () => {
     if (graphemesRemaining(textarea.value) < 0) {
       status.textContent = 'A little too long for the Atmosphere — trim it down.';
