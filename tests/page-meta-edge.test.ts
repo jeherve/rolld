@@ -99,6 +99,36 @@ describe('fetchEntry — the record behind an entry page, or nothing', () => {
   });
 });
 
+describe('fetchEntry — the Worker binding carries only the Worker call', () => {
+  /**
+   * In production the moderation check goes through a service binding, because a Pages
+   * Function cannot reach a Worker route on its own zone (D-62). Everything sent
+   * through that binding lands on the Worker — so the author's PDS must NOT be, or the
+   * record read would ask rolld's own Worker for someone else's repo.
+   */
+  it('reads the PDS over the public fetch and asks the Worker over the binding', async () => {
+    const apiFetch = vi.fn(async () =>
+      new Response(JSON.stringify({ dids: [], uris: [] }), { status: 200 }),
+    ) as unknown as typeof fetch;
+    const publicFetch = vi.fn(async () =>
+      new Response(JSON.stringify({ value: record }), { status: 200 }),
+    ) as unknown as typeof fetch;
+
+    const value = await fetchEntry({ ...entryArgs, apiFetch, fetchImpl: publicFetch });
+
+    expect(value?.game?.name).toBe('Battle Sheep');
+    const apiUrls = (apiFetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    const publicUrls = (publicFetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    expect(apiUrls.every((u) => u.includes('/api/moderation/check'))).toBe(true);
+    expect(publicUrls.every((u) => u.startsWith(PDS))).toBe(true);
+  });
+
+  it('still works when only one fetch is given — both calls share it', async () => {
+    const value = await fetchEntry({ ...entryArgs, fetchImpl: stubFetch({}) });
+    expect(value?.game?.name).toBe('Battle Sheep');
+  });
+});
+
 describe('fetchGame — catalog metadata for a game page title', () => {
   const gameFetch = (body: unknown, status = 200): typeof fetch =>
     vi.fn(async () => new Response(JSON.stringify(body), { status })) as typeof fetch;

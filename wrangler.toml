@@ -1,0 +1,22 @@
+# Cloudflare Pages project config — the SPA plus the `functions/` middleware (D-62).
+# The BGG Worker has its own config in `worker/wrangler.toml`; this file is only the
+# Pages side.
+#
+# It exists for one reason: the middleware has to call the Worker, and a Pages
+# Function cannot reach a Worker route on its own zone over `fetch` — same-zone
+# Worker-to-Worker calls need a service binding (Cloudflare error 1042). Without the
+# binding below, entry and game pages silently fall back to the generic head, which is
+# exactly what production did until this was added.
+#
+# NOTE: once Pages reads this file it becomes the source of truth, and the matching
+# fields can no longer be edited in the dashboard.
+
+name = "rolld"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-07-07"
+
+# `env.API` in the middleware — an in-process call to the BGG/moderation Worker, no
+# internet hop and no second request billed.
+[[services]]
+binding = "API"
+service = "rolld-worker"

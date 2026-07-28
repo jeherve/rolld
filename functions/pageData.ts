@@ -56,18 +56,27 @@ async function isBlocked(
 }
 
 export interface EntryRequest {
-  /** This site's own origin, where the Worker's `/api/*` routes live. */
+  /** The origin the Worker's `/api/*` routes answer on. */
   origin: string;
   pds: string;
   did: string;
   collection: string;
   rkey: string;
+  /** Outbound fetch, for the author's PDS. */
   fetchImpl?: typeof fetch;
+  /**
+   * How to reach rolld's own Worker — the service binding in production, since a
+   * Pages Function can't call a Worker route on its own zone (D-62). Kept separate
+   * from `fetchImpl` because everything sent through the binding lands on the Worker,
+   * and the PDS read must not.
+   */
+  apiFetch?: typeof fetch;
 }
 
 /** The record behind an entry page, once it has cleared moderation. Null otherwise. */
 export async function fetchEntry(req: EntryRequest): Promise<EntryRecord | null> {
   const fetchImpl = req.fetchImpl ?? fetch;
+  const apiFetch = req.apiFetch ?? fetchImpl;
   const uri = `at://${req.did}/${req.collection}/${req.rkey}`;
   const { signal, done } = budget();
   try {
@@ -78,7 +87,7 @@ export async function fetchEntry(req: EntryRequest): Promise<EntryRecord | null>
     // clean. `redirect: 'manual'` because the PDS origin was validated but a 3xx
     // Location is not — following it would step straight past that guard (Sec#1).
     const [blocked, res] = await Promise.all([
-      isBlocked(req.origin, req.did, uri, fetchImpl, signal),
+      isBlocked(req.origin, req.did, uri, apiFetch, signal),
       fetchImpl(url, { redirect: 'manual', signal }).catch(() => null),
     ]);
     if (blocked || !res || res.status >= 300 || !res.ok) return null;

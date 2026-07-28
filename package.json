@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name=rolld --branch=trunk",
+    "deploy": "npm run build && wrangler pages deploy --branch=trunk",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p worker/tsconfig.json --noEmit && tsc -p functions/tsconfig.json --noEmit",
