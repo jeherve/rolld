@@ -33,6 +33,7 @@ import { fetchRpgActorPresence } from '../read/rpgActor.js';
 import { subscribeToPlays } from '../read/spacedust.js';
 import { mostPlayed, playSummary, timesPlayed, topRated } from '../stats/personal.js';
 import { wireActorTypeahead } from './actorTypeahead.js';
+import { setPageMeta } from './head.js';
 import type { PageCtx } from './context.js';
 import { feedCard, type FeedAuthor } from './feedCard.js';
 import { countNoun, formatDate, formatDateLong, hasReportableContent, relativeTime } from './format.js';
@@ -281,6 +282,7 @@ export function gamePage(ctx: PageCtx, bggId: string): void {
       ]);
       mine = { count, rating };
     }
+    setPageMeta({ kind: 'game', bggId }, meta ? { game: { name: meta.name, yearPublished: meta.year } } : {});
     render(el, gamePageView(ctx, bggId, meta, { totalPlays, players }, mine));
     bindGameButtons(ctx, bggId, meta);
   })().catch(() => render(el, loadError()));
@@ -407,6 +409,7 @@ export function profile(ctx: PageCtx, handle: string): void {
       render(el, emptyState({ motif: '📦', title: "This profile isn't available" }));
       return;
     }
+    setPageMeta({ kind: 'person', identifier: doc.handle }, { handle: doc.handle });
     const [bio, plays, ratings] = await Promise.all([
       getProfile(appview, doc.did),
       listAllPlays(pdsClient(doc.pds), doc.did).catch(() => []),
@@ -528,6 +531,7 @@ export function playLog(ctx: PageCtx, handle: string): void {
       render(el, html`<h1>@${doc.handle}'s plays</h1>${emptyState({ motif: '📦', title: "This log isn't available" })}`);
       return;
     }
+    setPageMeta({ kind: 'personPlays', identifier: doc.handle }, { handle: doc.handle });
     const visible = plays.filter((r) => !modSet.uris.has(r.uri));
     if (visible.length === 0) {
       render(el, html`<h1>@${doc.handle}'s plays</h1>${emptyState({ title: 'No plays yet', body: 'When they log a game, it shows up here.' })}`);
@@ -582,6 +586,7 @@ function renderEntry(ctx: PageCtx, kind: 'play' | 'rating', identifier: string, 
       render(el, emptyState({ motif: '📦', title: "This entry isn't available" }));
       return;
     }
+    setPageMeta({ kind: 'entry', collection, rkey }, { handle: doc.handle, record: value });
     const meta = await resolveGame(value.game.id);
     render(el, entryView(ctx, kind, doc.handle, doc.did, rkey, value, meta));
     void loadComments(el, value);
@@ -681,6 +686,10 @@ export function userGame(ctx: PageCtx, handle: string, bggId: string): void {
       render(el, html`<h1>@${doc.handle} · ${meta?.name ?? `Game ${bggId}`}</h1>${emptyState({ motif: '📦', title: "This page isn't available" })}`);
       return;
     }
+    setPageMeta(
+      { kind: 'personGame', identifier: doc.handle, bggId },
+      { handle: doc.handle, game: meta ? { name: meta.name, yearPublished: meta.year } : undefined },
+    );
     const visiblePlays = plays.filter((r) => !modSet.uris.has(r.uri));
     render(
       el,
