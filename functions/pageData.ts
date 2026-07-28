@@ -55,6 +55,15 @@ async function isBlocked(
   }
 }
 
+/**
+ * Somewhere to keep a record between requests, keyed by its AT URI. Injected rather
+ * than reached for, so the caching rule is testable without a Workers runtime.
+ */
+export interface RecordCache {
+  get(key: string): Promise<EntryRecord | null>;
+  put(key: string, value: EntryRecord): void;
+}
+
 export interface EntryRequest {
   /** The origin the Worker's `/api/*` routes answer on. */
   origin: string;
@@ -71,6 +80,8 @@ export interface EntryRequest {
    * and the PDS read must not.
    */
   apiFetch?: typeof fetch;
+  /** Optional edge cache for the PDS read. The moderation check is never cached. */
+  cache?: RecordCache;
 }
 
 /** The record behind an entry page, once it has cleared moderation. Null otherwise. */
@@ -80,6 +91,15 @@ export async function fetchEntry(req: EntryRequest): Promise<EntryRecord | null>
   const uri = `at://${req.did}/${req.collection}/${req.rkey}`;
   const { signal, done } = budget();
   try {
+    // A cached record still has to clear moderation on every request. Caching the
+    // clearance would mean a takedown waited for a TTL to expire, and the whole point
+    // of the gate is that it doesn't (D-41/D-49).
+    const cached = req.cache ? await req.cache.get(uri) : null;
+    if (cached) {
+      const blocked = await isBlocked(req.origin, req.did, uri, apiFetch, signal);
+      return blocked ? null : cached;
+    }
+
     const url =
       `${req.pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(req.did)}` +
       `&collection=${encodeURIComponent(req.collection)}&rkey=${encodeURIComponent(req.rkey)}`;
@@ -93,7 +113,10 @@ export async function fetchEntry(req: EntryRequest): Promise<EntryRecord | null>
     if (blocked || !res || res.status >= 300 || !res.ok) return null;
     const body = (await res.json()) as { value?: unknown };
     const value = body.value;
-    return value && typeof value === 'object' ? (value as EntryRecord) : null;
+    if (!value || typeof value !== 'object') return null;
+    // Only records that cleared the gate are ever written to the cache.
+    req.cache?.put(uri, value as EntryRecord);
+    return value as EntryRecord;
   } catch {
     return null;
   } finally {
