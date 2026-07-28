@@ -19,12 +19,25 @@
  * so the tax is one cheap invocation, but it isn't zero.
  */
 import { atTagRoute, renderAtTags, resolveAtTags, type AtTag } from '../src/atTags.js';
-import { buildPageMeta, metaRoute, renderPageMeta, type MetaData, type MetaRoute, type RenderedMeta } from '../src/pageMeta.js';
+import {
+  buildPageMeta,
+  metaRoute,
+  renderPageMeta,
+  type EntryRecord,
+  type MetaData,
+  type MetaRoute,
+  type RenderedMeta,
+} from '../src/pageMeta.js';
 import { resolveIdentity, type Identity } from './identity.js';
-import { fetchEntry, fetchGame } from './pageData.js';
+import { fetchEntry, fetchGame, type RecordCache } from './pageData.js';
 
 /** Handles move rarely; an hour of edge memory saves a Slingshot round-trip per view. */
 const DID_CACHE_SECONDS = 3600;
+/** A play can be edited, so its cached copy is short-lived. Takedowns don't wait for
+ * this: the moderation check runs on every request, cache hit or not (`pageData.ts`). */
+const RECORD_CACHE_SECONDS = 300;
+/** Board game metadata doesn't change; the Worker caches it forever, so can we. */
+const GAME_CACHE_SECONDS = 86_400;
 
 /**
  * The Worker that owns BGG metadata and the moderation blocklist, bound as a service
@@ -64,32 +77,52 @@ class MetaContent {
   }
 }
 
+/** Read a JSON value from the edge cache, or null. Any trouble reads as a miss. */
+async function cacheRead<T>(key: string): Promise<T | null> {
+  try {
+    const hit = await caches.default.match(new Request(key));
+    return hit ? ((await hit.json()) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Write a JSON value to the edge cache, off the response path. */
+function cacheWrite(ctx: Ctx, key: string, value: unknown, seconds: number): void {
+  ctx.waitUntil(
+    caches.default
+      .put(
+        new Request(key),
+        new Response(JSON.stringify(value), {
+          headers: { 'content-type': 'application/json', 'cache-control': `max-age=${seconds}` },
+        }),
+      )
+      .catch(() => {}),
+  );
+}
+
 /**
  * Identity, memoized in the edge cache. Only successes are cached: a handle that
  * doesn't resolve yet (a brand-new account) should start working on its next view,
  * not in an hour.
  */
 async function cachedIdentity(identifier: string, ctx: Ctx): Promise<Identity | null> {
-  const key = new Request(`https://rolld.at/__at-identity/${encodeURIComponent(identifier)}`);
-  const cache = caches.default;
-  const hit = await cache.match(key);
-  if (hit) return (await hit.json()) as Identity;
+  const key = `https://rolld.at/__meta/identity/${encodeURIComponent(identifier)}`;
+  const hit = await cacheRead<Identity>(key);
+  if (hit) return hit;
 
   const identity = await resolveIdentity(identifier);
-  if (identity) {
-    ctx.waitUntil(
-      cache.put(
-        key,
-        new Response(JSON.stringify(identity), {
-          headers: {
-            'content-type': 'application/json',
-            'cache-control': `max-age=${DID_CACHE_SECONDS}`,
-          },
-        }),
-      ),
-    );
-  }
+  if (identity) cacheWrite(ctx, key, identity, DID_CACHE_SECONDS);
   return identity;
+}
+
+/** The record cache `fetchEntry` writes through, backed by the edge cache. */
+function recordCache(ctx: Ctx): RecordCache {
+  return {
+    get: (uri) => cacheRead<EntryRecord>(`https://rolld.at/__meta/record/${encodeURIComponent(uri)}`),
+    put: (uri, value) =>
+      cacheWrite(ctx, `https://rolld.at/__meta/record/${encodeURIComponent(uri)}`, value, RECORD_CACHE_SECONDS),
+  };
 }
 
 /** How to reach the Worker: through the binding when it exists, over HTTP otherwise. */
@@ -108,8 +141,19 @@ function api(env: Env, url: URL): Api {
   };
 }
 
+/** Game metadata, memoized at the edge so a cold isolate doesn't re-ask the Worker. */
+async function cachedGame(bggId: string, api: Api, ctx: Ctx) {
+  const key = `https://rolld.at/__meta/game/${encodeURIComponent(bggId)}`;
+  const hit = await cacheRead<{ name: string; yearPublished?: number }>(key);
+  if (hit) return hit;
+
+  const game = await fetchGame(api.origin, bggId, { fetchImpl: api.fetchImpl });
+  if (game) cacheWrite(ctx, key, game, GAME_CACHE_SECONDS);
+  return game;
+}
+
 /** Gather whatever this route needs to describe itself. Every miss is survivable. */
-async function gather(route: MetaRoute, identity: Identity | null, api: Api): Promise<MetaData> {
+async function gather(route: MetaRoute, identity: Identity | null, api: Api, ctx: Ctx): Promise<MetaData> {
   const data: MetaData = identity?.handle ? { handle: identity.handle } : {};
 
   if (route.kind === 'entry' && identity?.pds && route.collection && route.rkey) {
@@ -122,12 +166,13 @@ async function gather(route: MetaRoute, identity: Identity | null, api: Api): Pr
       // Only the moderation check goes through the binding; the PDS read is a
       // genuine outbound request and uses the global fetch.
       apiFetch: api.fetchImpl,
+      cache: recordCache(ctx),
     });
     if (record) data.record = record;
     return data;
   }
   if (route.bggId) {
-    const game = await fetchGame(api.origin, route.bggId, { fetchImpl: api.fetchImpl });
+    const game = await cachedGame(route.bggId, api, ctx);
     if (game) data.game = game;
   }
   return data;
@@ -151,7 +196,7 @@ async function collect(
 
   let meta: RenderedMeta | null = null;
   if (route) {
-    const data = route.kind === 'static' ? {} : await gather(route, identity, api(ctx.env, url));
+    const data = route.kind === 'static' ? {} : await gather(route, identity, api(ctx.env, url), ctx);
     const built = buildPageMeta(route, data);
     if (built) meta = renderPageMeta(built, `${url.origin}${url.pathname}`);
   }

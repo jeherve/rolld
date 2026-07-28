@@ -129,6 +129,63 @@ describe('fetchEntry — the Worker binding carries only the Worker call', () =>
   });
 });
 
+describe('fetchEntry — the record cache, and what it must not cache away', () => {
+  /**
+   * The PDS read is the slow part of an entry page, so a hit saves the round-trip
+   * (D-62). What it must never save is the moderation check: a record taken down a
+   * minute ago has to disappear on the next request, not when a cache entry expires.
+   * So a cache hit still asks the Worker, every time.
+   */
+  const memoryCache = () => {
+    const store = new Map<string, unknown>();
+    return {
+      store,
+      get: async (key: string) => (store.get(key) ?? null) as never,
+      put: (key: string, value: unknown) => void store.set(key, value),
+    };
+  };
+
+  it('serves a cached record without going back to the PDS', async () => {
+    const cache = memoryCache();
+    cache.store.set(URI, record);
+    const fetchImpl = stubFetch({});
+
+    const value = await fetchEntry({ ...entryArgs, fetchImpl, cache });
+
+    expect(value?.game?.name).toBe('Battle Sheep');
+    const urls = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes('getRecord'))).toBe(false);
+  });
+
+  it('re-checks moderation on a cache hit, and drops a record taken down since', async () => {
+    const cache = memoryCache();
+    cache.store.set(URI, record);
+    const fetchImpl = stubFetch({ blocked: { uris: [URI] } });
+
+    expect(await fetchEntry({ ...entryArgs, fetchImpl, cache })).toBeNull();
+  });
+
+  it('fails closed on a cache hit when the check cannot be made', async () => {
+    const cache = memoryCache();
+    cache.store.set(URI, record);
+    const fetchImpl = stubFetch({ moderationStatus: 500 });
+
+    expect(await fetchEntry({ ...entryArgs, fetchImpl, cache })).toBeNull();
+  });
+
+  it('caches a record it just read', async () => {
+    const cache = memoryCache();
+    await fetchEntry({ ...entryArgs, fetchImpl: stubFetch({}), cache });
+    expect(cache.store.get(URI)).toMatchObject({ game: { name: 'Battle Sheep' } });
+  });
+
+  it('never caches a record it was told not to show', async () => {
+    const cache = memoryCache();
+    await fetchEntry({ ...entryArgs, fetchImpl: stubFetch({ blocked: { dids: [DID] } }), cache });
+    expect(cache.store.size).toBe(0);
+  });
+});
+
 describe('fetchGame — catalog metadata for a game page title', () => {
   const gameFetch = (body: unknown, status = 200): typeof fetch =>
     vi.fn(async () => new Response(JSON.stringify(body), { status })) as typeof fetch;

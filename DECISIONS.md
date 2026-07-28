@@ -1026,3 +1026,11 @@ binding declared in a root `wrangler.toml` (`env.API`), which also makes the Pag
 config part of the repo rather than the dashboard. Worth remembering as a rule: anything the
 middleware needs from rolld's own Worker goes through the binding, and only genuinely
 outbound requests — a PDS, Slingshot — use a plain `fetch`.
+
+The same amendment adds the edge caching the design called for: identity for an hour, a
+record for five minutes, game metadata for a day (it never changes). One thing is
+deliberately never cached — the moderation check. A cache hit still asks the Worker on every
+request, because caching the clearance would mean a takedown waited for a TTL to expire, and
+not waiting is the entire point of the gate. Records are written to the cache only after they
+have cleared it. Measured on a preview deploy: an entry page goes from ~980ms cold to ~150ms
+warm.
