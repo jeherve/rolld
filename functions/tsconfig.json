@@ -14,5 +14,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["**/*.ts", "../src/atTags.ts", "../src/router/match.ts"]
+  "include": ["**/*.ts", "../src/atTags.ts", "../src/pageMeta.ts", "../src/router/match.ts", "../src/records/types.ts", "../src/text/graphemes.ts", "../src/ui/format.ts", "../worker/src/http.ts"]
 }

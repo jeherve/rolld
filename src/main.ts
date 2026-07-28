@@ -7,7 +7,7 @@ import { createRouter } from './router/router.js';
 import type { AppState, PageCtx, SessionInfo } from './ui/context.js';
 import { openLogFlow } from './ui/flows.js';
 import { bindAccountMenu } from './ui/accountMenu.js';
-import { syncAtTags } from './ui/head.js';
+import { syncAtTags, syncPageHead } from './ui/head.js';
 import { mountShell } from './ui/layout.js';
 import * as views from './ui/views.js';
 
@@ -33,6 +33,8 @@ const ctx: PageCtx = {
   },
 };
 
+let firstRender = true;
+
 const router = createRouter({
   routes: {
     '/': () => views.home(ctx),
@@ -56,9 +58,13 @@ const router = createRouter({
     '/did/:did/rating/:rkey': (m) => views.entryByDid(ctx, 'rating', m.params.did!, m.params.rkey!),
   },
   notFound: () => views.notFound(ctx),
-  // The served HTML already carries the right `at:` tags (D-61, the Pages
-  // middleware); this keeps them true once the SPA takes over the URL bar.
-  onRender: (path) => void syncAtTags(path, async (h) => (await resolveMiniDoc(h))?.did ?? null),
+  // The served HTML already carries the right head for the URL it was fetched with
+  // (D-61/D-62, the Pages middleware); from the second render on, the SPA owns it.
+  onRender: (path) => {
+    if (firstRender) firstRender = false;
+    else syncPageHead(path);
+    void syncAtTags(path, async (h) => (await resolveMiniDoc(h))?.did ?? null);
+  },
 });
 
 /** Build the session info (resolve the user's handle + PDS) from an authed agent. */

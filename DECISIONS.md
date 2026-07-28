@@ -970,3 +970,47 @@ small — but it is one more moving part in an app that had exactly one (the Wor
 also emitted without confirming the record is really there; the URL claims what it claims, and the
 repo remains the source of truth. And the proposal is young, so the property names could still move.
 If they do, it's one file to change.
+
+### D-62 — Per-page titles and descriptions, from the same middleware
+
+Once the middleware from D-61 existed, the static `<head>` looked worse than it had before.
+Every page rolld serves carried one title and one description: a shared play link said "rolld
+— log your board game plays on atproto" wherever it landed, and so did every browser tab,
+every bookmark and every entry in someone's history. `document.title` was never set anywhere
+in the app. The tags were already being rewritten at the edge; not fixing the rest of the head
+while I was in there would have been odd.
+
+Bluesky isn't the beneficiary. It doesn't unfurl links server-side, and the share flow builds
+its own embed (D-16, D-33). This is for Mastodon and mu.social and Discord and Slack and
+iMessage, for search and AI crawlers, and for the browser's own chrome, which is the part I
+notice most often myself.
+
+An entry page says `@handle played <game>` and, when the play carries a note, quotes it.
+Nothing extra is fetched to manage that: a play record carries its own `game.name` snapshot
+(D-32) and its own plain-text `textContent` (D-11), so one record read answers the whole
+page. Profiles and play logs are answered from the handle alone. Game pages get their name
+from the Worker's KV-cached BGG metadata, and a description rolld wrote rather than BGG's own
+game text, which stays on BGG (D-18). The copy lives in `src/pageMeta.ts`, shared with the
+browser so the two halves can't drift, and the views set `document.title` from data they
+already hold rather than fetching anything twice.
+
+Two things are deliberately absent. There's no `og:image`: the play's own photo would work,
+but it adds a blob fetch and another moderation surface for a nicer-looking card, and the BGG
+cover raises a redistribution question I'd rather not answer casually (D-18, D-31). And
+titles name handles, not display names, because a display name costs an AppView call on every
+page view and reads no better in a tab.
+
+The rule underneath all of it: anything short of a confident answer falls back to the static
+block. A blocked record, a moderation check that didn't come back, a timeout, an unresolvable
+handle, a missing record — all identical from outside. The moderation gate matters most here.
+A taken-down play must not leak its game or its note through an `og:description`, so the
+middleware clears every record against the Worker's blocklist and fails closed exactly as the
+render path does (D-41, D-49). This is the blocklist's second enforcement point, which is
+worth remembering: any future surface that reads a record server-side needs the same gate.
+
+Cost accepted: an entry page now costs two edge fetches (the check and the record) on top of
+identity resolution, all inside the same 1.5s budget and cached afterwards. The middleware
+grew from one job to two, and it's the one place where a bug shows up on every page at once
+rather than in one view. And a client-side navigation to a page whose data the SPA doesn't
+hold — a game's play list, say — falls back to the site title until the reader lands
+somewhere that does; the served HTML is right, the tab briefly isn't.

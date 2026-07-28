@@ -53,10 +53,11 @@ gateway to BoardGameGeek — it holds the BGG token as a secret and injects it s
 the browser never calls BGG. It also serves per-user RSS feeds and enforces the moderation
 blocklist.
 
-The other one is a small Pages middleware (`functions/`) that adds
-[`at:` meta tags](https://tangled.org/chrisshank.com/at-tags/) to the pages that render a
-record, so any tool can walk from a rolld URL back to the record on your PDS and open it with
-whatever app it likes. Everything else runs in the browser.
+The other one is a small Pages middleware (`functions/`) that fills in the `<head>` of each
+page as it's served: [`at:` meta tags](https://tangled.org/chrisshank.com/at-tags/) pointing
+back at the record the page renders, so any tool can open it with whatever app it likes, plus
+a real title and description instead of the same site-wide one everywhere. Everything else
+runs in the browser.
 
 ## Lexicons (`at.rolld.*`)
 
@@ -133,9 +134,22 @@ The `--branch` flag matters: only deployments matching your project's production
 promoted to the live site. Adjust the project name and branch for your own setup.
 
 Wrangler picks up `functions/` from the repo root on its own, so the middleware ships with the
-same command. To try it locally, `npm run build && npx wrangler pages dev dist`; plain
-`npm run dev` serves the Vite SPA without it, so the `at:` tags only appear after client-side
-routing.
+same command. Plain `npm run dev` serves the Vite SPA without it, so the served `<head>` is
+the static one and only the client-side half runs. To exercise the middleware for real, build
+against a local Worker and point Pages at it:
+
+```sh
+VITE_API_BASE=http://127.0.0.1:8787 npm run build
+npm run worker:dev                                    # in another terminal, port 8787
+npx wrangler pages dev dist --port 12530 \
+  --compatibility-date=2026-07-07 \
+  --binding API_ORIGIN=http://127.0.0.1:8787
+```
+
+Port 12530 because the Worker's CORS allowlist knows it. `API_ORIGIN` tells the middleware
+where `/api/*` lives (production shares an origin, so it's unset there). And the compatibility
+date has to be one your installed `workerd` supports — the default is today's date, which it
+usually isn't yet.
 
 ## License
 
