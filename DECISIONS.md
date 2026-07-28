@@ -1014,3 +1014,15 @@ grew from one job to two, and it's the one place where a bug shows up on every p
 rather than in one view. And a client-side navigation to a page whose data the SPA doesn't
 hold — a game's play list, say — falls back to the site title until the reader lands
 somewhere that does; the served HTML is right, the tab briefly isn't.
+
+**Amendment to D-62 (same day):** the first production deploy of this quietly did nothing on
+exactly the pages it was written for. A Pages Function cannot reach a Worker route on its own
+zone over `fetch` — same-zone Worker-to-Worker calls need a service binding, and Cloudflare
+fails them outright (error 1042). So the moderation check threw, `fetchEntry` did what it
+promises to do on a failed check and reported the record blocked, and every entry and game
+page fell back to the generic head. Nothing leaked and nothing errored; it just silently
+wasn't there, which is the failure mode fail-closed designs have. The fix is a service
+binding declared in a root `wrangler.toml` (`env.API`), which also makes the Pages project's
+config part of the repo rather than the dashboard. Worth remembering as a rule: anything the
+middleware needs from rolld's own Worker goes through the binding, and only genuinely
+outbound requests — a PDS, Slingshot — use a plain `fetch`.

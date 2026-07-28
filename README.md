@@ -127,11 +127,19 @@ git-connected builds aren't wired up. The deploy builds locally and pushes `dist
 Wrangler direct upload:
 
 ```sh
-npm run deploy       # build + wrangler pages deploy dist --project-name=rolld --branch=trunk
+npm run deploy       # build + wrangler pages deploy --branch=trunk
 ```
 
-The `--branch` flag matters: only deployments matching your project's production branch get
-promoted to the live site. Adjust the project name and branch for your own setup.
+The project name, the output directory and the Function bindings all come from the root
+`wrangler.toml`, which Pages treats as the source of truth once it's there — those fields
+can't be edited in the dashboard any more. The `--branch` flag still matters: only
+deployments matching your project's production branch get promoted to the live site.
+
+The binding in that file is load-bearing. The middleware has to ask the Worker about
+moderation and game names, and a Pages Function **cannot** reach a Worker route on its own
+zone over `fetch` — same-zone Worker-to-Worker calls need a service binding (Cloudflare error
+1042). Without it the calls fail, and since the moderation gate fails closed, entry and game
+pages quietly drop back to the generic head.
 
 Wrangler picks up `functions/` from the repo root on its own, so the middleware ships with the
 same command. Plain `npm run dev` serves the Vite SPA without it, so the served `<head>` is
@@ -146,8 +154,8 @@ npx wrangler pages dev dist --port 12530 \
   --binding API_ORIGIN=http://127.0.0.1:8787
 ```
 
-Port 12530 because the Worker's CORS allowlist knows it. `API_ORIGIN` tells the middleware
-where `/api/*` lives (production shares an origin, so it's unset there). And the compatibility
+Port 12530 because the Worker's CORS allowlist knows it. `API_ORIGIN` points the middleware at
+the local Worker; in production the service binding handles that instead. And the compatibility
 date has to be one your installed `workerd` supports — the default is today's date, which it
 usually isn't yet.
 
