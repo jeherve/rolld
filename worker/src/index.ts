@@ -15,7 +15,7 @@
 import { parseSearch, parseThing, parseThings } from '../../src/bgg/parse.js';
 import { rankCandidates, rankHydrated } from '../../src/bgg/rankSearch.js';
 import type { GameMetadata, SearchCandidate } from '../../src/bgg/types.js';
-import { BggError, fetchSearchXml, fetchThingXml } from './bgg.js';
+import { type BggDeps, BggError, fetchSearchXml, fetchThingXml } from './bgg.js';
 import { buildUserFeedXml } from './feed.js';
 import { corsHeaders, errorJson, json, safeUpstreamOrigin } from './http.js';
 import { blockedSubset, isBlockedDid, loadBlocklist } from './moderation.js';
@@ -47,6 +47,16 @@ const MAX_BATCH = 20; // BGG caps a `thing` call at 20 ids (D-31).
 const MAX_IDS = 100; // Per-request hydrate cap — bounds Worker/BGG work, blocks DoS amplification (Sec#2).
 /** BGG caps a `thing` call at 20 ids, so hydrating exactly 20 costs one request (D-31). */
 const SEARCH_HYDRATE = 20;
+/**
+ * Search hydration gets one attempt and no backoff — deliberately unlike every other
+ * BGG call, which retries because its result is the answer. Here the result is only
+ * the covers, and D-32 already says we're willing to lose them. The default policy
+ * sleeps 5s+10s+20s before giving up (`bgg.ts`), so a busy BGG would stall a query
+ * someone is *typing* for ~35s and then discard the covers regardless — and stacked
+ * on a retried search call that approaches Cloudflare's 100s limit. Fail fast instead:
+ * the cost is a cover-less result now rather than the same result a minute later.
+ */
+const HYDRATE_DEPS: BggDeps = { maxAttempts: 1 };
 
 const CONSTELLATION_BASE = 'https://constellation.microcosm.blue';
 const SLINGSHOT_BASE = 'https://slingshot.microcosm.blue';
@@ -77,8 +87,13 @@ async function resolveOne(env: Env, id: string): Promise<GameMetadata | null> {
   return meta;
 }
 
-/** Hydrate many ids in one BGG call for the misses; never re-fetches a cache hit. */
-async function resolveMany(env: Env, ids: string[]): Promise<GameMetadata[]> {
+/**
+ * Hydrate many ids in one BGG call for the misses; never re-fetches a cache hit.
+ * `deps` tunes the upstream retry policy for callers that can afford to give up early
+ * (search hydration); omitting it keeps the patient default the `/api/game(s)` routes
+ * need, where the metadata *is* the response.
+ */
+async function resolveMany(env: Env, ids: string[], deps?: BggDeps): Promise<GameMetadata[]> {
   const unique = [...new Set(ids.filter(Boolean))];
   const found = new Map<string, GameMetadata>();
   const misses: string[] = [];
@@ -94,7 +109,7 @@ async function resolveMany(env: Env, ids: string[]): Promise<GameMetadata[]> {
   // within a batch are independent, so fire those together.
   for (let i = 0; i < misses.length; i += MAX_BATCH) {
     const batch = misses.slice(i, i + MAX_BATCH);
-    const xml = await fetchThingXml(batch.join(','), env.BGG_TOKEN);
+    const xml = await fetchThingXml(batch.join(','), env.BGG_TOKEN, deps);
     const metas = parseThings(xml, new Date().toISOString());
     await Promise.all(metas.map((meta) => env.BGG_CACHE.put(gameKey(meta.id), JSON.stringify(meta))));
     for (const meta of metas) found.set(meta.id, meta);
@@ -117,7 +132,9 @@ async function search(env: Env, q: string): Promise<SearchCandidate[]> {
   const top = ranked.slice(0, SEARCH_HYDRATE);
   let hydrated = top;
   try {
-    const byId = new Map((await resolveMany(env, top.map((c) => c.id))).map((m) => [m.id, m]));
+    const byId = new Map(
+      (await resolveMany(env, top.map((c) => c.id), HYDRATE_DEPS)).map((m) => [m.id, m]),
+    );
     hydrated = top.map((c) => {
       const meta = byId.get(c.id);
       if (!meta) return c;
@@ -129,7 +146,8 @@ async function search(env: Env, q: string): Promise<SearchCandidate[]> {
     });
   } catch {
     // D-32: covers are an enhancement. A BGG failure here costs the art and the
-    // popularity tie-break, not the search itself.
+    // popularity tie-break, not the search itself — and costs them immediately,
+    // since `HYDRATE_DEPS` gives up on the first refusal rather than backing off.
   }
 
   const out = [...rankHydrated(q, hydrated), ...ranked.slice(SEARCH_HYDRATE)];

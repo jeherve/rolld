@@ -144,6 +144,26 @@ describe('worker routes', () => {
     expect(body[0].thumbnail).toBeUndefined();
   });
 
+  // The 401 above never reaches the retry loop — `bggGet` throws on it immediately.
+  // A *retryable* status is the slow path: on the default policy hydration would sleep
+  // 5s+10s+20s before giving up, stalling a typed query for 35s to discard the covers
+  // anyway. The call count is the real assertion — without it this passes unfixed.
+  it('degrades immediately, without retrying, when hydration hits a busy BGG', async () => {
+    const SEARCH = '<items><item id="174430"><name type="primary" value="Gloomhaven"/><yearpublished value="2017"/></item></items>';
+    const fetchImpl = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes('/search?') ? xml(SEARCH) : xml('', 503),
+    );
+    vi.stubGlobal('fetch', fetchImpl);
+
+    const r = await worker.fetch(req('/api/search?q=gloomhaven'), env(fakeKv()));
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body[0].name).toBe('Gloomhaven');
+    expect(body[0].thumbnail).toBeUndefined();
+    // One search + one hydrate attempt. Any more means the backoff ran.
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it('returns [] for a too-short search without calling BGG', async () => {
     const fetchImpl = vi.fn(async () => xml('<items/>'));
     vi.stubGlobal('fetch', fetchImpl);
