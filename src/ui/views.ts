@@ -727,7 +727,7 @@ export function search(ctx: PageCtx): void {
         results,
         games.length === 0
           ? emptyState({ title: 'No games found', body: 'Check the spelling, or try a shorter name.' })
-          : html`${games.map((g) => html`<a class="record" href="${gamePath(g.id)}" data-link>${g.name}${g.yearPublished ? html` <span class="muted mono">(${g.yearPublished})</span>` : ''}</a>`)}`,
+          : html`${games.map((g) => html`<a class="record game-hit" href="${gamePath(g.id)}" data-link>${gameCover(g.name, g, 40)}<span>${g.name}${g.yearPublished ? html` <span class="muted mono">(${g.yearPublished})</span>` : ''}</span></a>`)}`,
       );
     } catch {
       render(results, errorState({ title: 'Search is unavailable', body: 'Give it another go in a moment.' }));

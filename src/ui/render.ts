@@ -59,7 +59,7 @@ export function avatar(url: string | undefined, alt: string, size = 40): SafeHtm
  */
 export function gameCover(
   name: string,
-  meta: GameMetadata | null,
+  meta: Pick<GameMetadata, 'thumbnail' | 'image'> | null | undefined,
   size = 56,
   opts: { fill?: boolean } = {},
 ): SafeHtml {

@@ -902,6 +902,8 @@ label.mono {
 /* typeahead ----------------------------------------------------------------- */
 .typeahead {
   display: grid;
+  max-height: 17rem;
+  overflow-y: auto;
 }
 .ta-item {
   text-align: left;
@@ -969,6 +971,24 @@ label.mono {
 }
 .ta-actor .muted {
   margin-left: auto;
+}
+.ta-game {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ta-game .cover {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+}
+.ta-game-name {
+  font-weight: 500;
+}
+.game-hit {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 .player-tag {
   color: var(--accent-2);

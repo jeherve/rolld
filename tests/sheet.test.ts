@@ -7,7 +7,8 @@
  * the three bands exist and that the CTA really does live outside the form.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { openSheet } from '../src/ui/flows.js';
+import type { PageCtx } from '../src/ui/context.js';
+import { openLogFlow, openSheet } from '../src/ui/flows.js';
 import { html } from '../src/ui/html.js';
 
 beforeEach(() => {
@@ -79,5 +80,31 @@ describe('the pinned submit button', () => {
     button.click();
     expect(submitted).toBe(true);
     sheet.close();
+  });
+});
+
+describe('the game picker inside the log form', () => {
+  // openLogFlow needs a session or it redirects to /login. Nothing here touches the
+  // agent — the submit handler is exactly what this test proves never runs.
+  const ctx = (): PageCtx =>
+    ({
+      main: document.createElement('main'),
+      navigate: () => {},
+      replace: () => {},
+      refreshChrome: () => {},
+      state: { session: { handle: 'tester.example', agent: {} } },
+    }) as unknown as PageCtx;
+
+  // Regression: these buttons had no `type`, so they defaulted to submit inside
+  // <form id="log-form">. Clicking "change" to pick a different game submitted the
+  // form with the previous game still set — logging the play then and there.
+  it('gives every picker button a type so it cannot submit the log form', () => {
+    openLogFlow(ctx(), { id: '352515', name: 'Trio', yearPublished: 2021 });
+    const form = document.querySelector<HTMLFormElement>('#log-form')!;
+    const buttons = [...form.querySelectorAll('button')];
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const button of buttons) {
+      expect(button.getAttribute('type')).toBe('button');
+    }
   });
 });

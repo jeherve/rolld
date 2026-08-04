@@ -17,6 +17,7 @@ import { graphemesRemaining } from '../text/graphemes.js';
 import { wireActorTypeahead } from './actorTypeahead.js';
 import type { PageCtx } from './context.js';
 import { html, render, type SafeHtml } from './html.js';
+import { gameCover } from './render.js';
 
 /* ---- bottom-sheet shell ------------------------------------------------------ */
 
@@ -91,7 +92,7 @@ function gamePicker(prefill?: GameRef): GamePicker {
       const results = container.querySelector<HTMLElement>('[data-results]')!;
       const picked = container.querySelector<HTMLElement>('[data-picked]')!;
       const choose = (game: GameRef): void => {
-        render(picked, html`<span class="chip">${game.name}${game.yearPublished ? html` (${game.yearPublished})` : ''} <button data-change>change</button></span>`);
+        render(picked, html`<span class="chip">${game.name}${game.yearPublished ? html` (${game.yearPublished})` : ''} <button type="button" data-change>change</button></span>`);
         picked.hidden = false;
         input.hidden = true;
         results.replaceChildren();
@@ -119,8 +120,9 @@ function gamePicker(prefill?: GameRef): GamePicker {
               render(
                 results,
                 html`${games.slice(0, 8).map(
-                  (g) => html`<button class="ta-item" data-id="${g.id}" data-name="${g.name}" data-year="${g.yearPublished ?? ''}">
-                    ${g.name}${g.yearPublished ? html` <span class="muted mono">(${g.yearPublished})</span>` : ''}
+                  (g) => html`<button type="button" class="ta-item ta-game" data-id="${g.id}" data-name="${g.name}" data-year="${g.yearPublished ?? ''}">
+                    ${gameCover(g.name, g, 28)}
+                    <span class="ta-game-name">${g.name}</span>${g.yearPublished ? html` <span class="muted mono">(${g.yearPublished})</span>` : ''}
                   </button>`,
                 )}`,
               );
