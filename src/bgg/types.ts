@@ -25,6 +25,9 @@ export interface GameMetadata {
   weight?: number;
   /** The geek-weighted score BGG ranks by (bayesaverage; requires stats=1). */
   bggRating?: number;
+  /** How many people have rated it (BGG "usersrated"; requires stats=1). The
+   *  popularity signal search ranking uses to separate same-named games (D-63). */
+  usersRated?: number;
   categories?: string[];
   mechanics?: string[];
   /** When this metadata was hydrated, for cache bookkeeping. */

@@ -211,6 +211,8 @@ function parseItem(item: XmlNode, fetchedAt: string): GameMetadata {
   if (weight !== undefined && weight > 0) meta.weight = weight;
   const bggRating = attrNumber(ratings.bayesaverage);
   if (bggRating !== undefined && bggRating > 0) meta.bggRating = bggRating;
+  const usersRated = attrNumber(ratings.usersrated);
+  if (usersRated !== undefined && usersRated > 0) meta.usersRated = usersRated;
   if (categories.length) meta.categories = categories;
   if (mechanics.length) meta.mechanics = mechanics;
   return meta;

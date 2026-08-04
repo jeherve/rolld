@@ -33,6 +33,10 @@ describe('parseThing', () => {
     expect(meta.bggRating).toBeCloseTo(8.51012, 4);
   });
 
+  it('reads usersRated, the popularity signal search ranks on', () => {
+    expect(meta.usersRated).toBe(55432);
+  });
+
   it('filters <link> tags by type into categories and mechanics', () => {
     expect(meta.categories).toEqual(['Adventure', 'Exploration', 'Fantasy']);
     expect(meta.mechanics).toEqual([
