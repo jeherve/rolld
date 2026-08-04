@@ -121,7 +121,7 @@ function gamePicker(prefill?: GameRef): GamePicker {
                 results,
                 html`${games.slice(0, 8).map(
                   (g) => html`<button type="button" class="ta-item ta-game" data-id="${g.id}" data-name="${g.name}" data-year="${g.yearPublished ?? ''}">
-                    ${gameCover(g.name, g, 28)}
+                    ${gameCover(g.name, g, 28, { decorative: true })}
                     <span class="ta-game-name">${g.name}</span>${g.yearPublished ? html` <span class="muted mono">(${g.yearPublished})</span>` : ''}
                   </button>`,
                 )}`,

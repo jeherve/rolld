@@ -31,6 +31,39 @@ describe('gameCover — source selection', () => {
   });
 });
 
+// The search rows put the cover right next to the same name as visible text, so an
+// `alt` there makes a screen reader say "Trio Trio 2021" on every one of eight rows.
+describe('gameCover — decorative covers', () => {
+  it('drops the alt and hides the image when the name is already beside it', () => {
+    const out = gameCover('Wingspan', meta(), 28, { decorative: true }).toString();
+    expect(out).toContain('alt=""');
+    expect(out).toContain('aria-hidden="true"');
+    expect(out).not.toContain('alt="Wingspan"');
+  });
+
+  // Pin the default: most call sites are a cover with no name beside it, and they'd
+  // lose their only accessible name if `decorative` ever became the default.
+  it('keeps the real alt when it is not decorative', () => {
+    const out = gameCover('Wingspan', meta(), 56).toString();
+    expect(out).toContain('alt="Wingspan"');
+    expect(out).not.toContain('aria-hidden');
+  });
+
+  it('still escapes the alt of a name that could break out of the attribute', () => {
+    const out = gameCover('" onerror="alert(1)', meta(), 56).toString();
+    expect(out).not.toContain('onerror="alert(1)"');
+    expect(out).toContain('&quot;');
+  });
+
+  // `decorative` must not be spelled as an empty `name` — that empties the initials.
+  it('keeps the placeholder initials when decorative and the art is missing', () => {
+    const out = gameCover('Wingspan', null, 28, { decorative: true }).toString();
+    expect(out).toContain('cover ph');
+    expect(out).toContain('Wi');
+    expect(out).toContain('aria-hidden="true"');
+  });
+});
+
 const embed = (cid: string, alt = 'a board'): ImageEmbed => ({
   image: { $type: 'blob', ref: { $link: cid }, mimeType: 'image/jpeg', size: 1000 },
   alt,

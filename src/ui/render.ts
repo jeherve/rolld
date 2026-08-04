@@ -10,7 +10,7 @@ import { ABUSE_EMAIL, API_BASE } from '../config.js';
 import { gamePath, profilePath, rpgActorProfileUrl } from '../links.js';
 import type { RpgActorPresence } from '../read/rpgActor.js';
 import type { ImageEmbed } from '../records/types.js';
-import { html, render, type SafeHtml } from './html.js';
+import { html, raw, render, type SafeHtml } from './html.js';
 import { externalMark } from './icons.js';
 
 /** Photo blob URL — served through the Worker so the moderation blob-refuse applies (D-41). */
@@ -56,21 +56,27 @@ export function avatar(url: string | undefined, alt: string, size = 40): SafeHtm
  * A game cover/thumbnail; until BGG metadata loads, show the name snapshot (CC-5).
  * `fill` mode drops the fixed pixel size and lets the cover fill its tile (the
  * gallery grids), so a whole grid reads as uniform box art rather than tiny icons.
+ * `decorative` is for rows that already show the game's name as text beside the
+ * cover: without it a screen reader reads the name twice, once per row.
  */
 export function gameCover(
   name: string,
   meta: Pick<GameMetadata, 'thumbnail' | 'image'> | null | undefined,
   size = 56,
-  opts: { fill?: boolean } = {},
+  opts: { fill?: boolean; decorative?: boolean } = {},
 ): SafeHtml {
   // Fill tiles are large, so reach for BGG's full-res image; the small inline
   // covers stay on the lighter thumbnail (D-35: don't pull big images for a 56px icon).
   const src = opts.fill ? (meta?.image ?? meta?.thumbnail) : (meta?.thumbnail ?? meta?.image);
   const cls = opts.fill ? 'cover fill' : 'cover';
+  // Decorative covers hand their accessible name to the adjacent text, the same way
+  // the placeholder branch below already does. `name` still carries the placeholder's
+  // initials, so callers must not pass an empty one to get this.
+  const label = opts.decorative ? raw('alt="" aria-hidden="true"') : html`alt="${name}"`;
   if (src) {
     return opts.fill
-      ? html`<img class="${cls}" src="${src}" alt="${name}" loading="lazy" />`
-      : html`<img class="${cls}" src="${src}" alt="${name}" width="${size}" height="${size}" loading="lazy" />`;
+      ? html`<img class="${cls}" src="${src}" ${label} loading="lazy" />`
+      : html`<img class="${cls}" src="${src}" ${label} width="${size}" height="${size}" loading="lazy" />`;
   }
   return opts.fill
     ? html`<span class="${cls} ph" aria-hidden="true">${name.slice(0, 2)}</span>`
