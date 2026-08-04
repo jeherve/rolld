@@ -1034,3 +1034,49 @@ request, because caching the clearance would mean a takedown waited for a TTL to
 not waiting is the entire point of the gate. Records are written to the cache only after they
 have cleared it. Measured on a preview deploy: an entry page goes from ~980ms cold to ~150ms
 warm.
+
+### D-63 — Search ranks by relevance, and suggestions carry cover art
+
+BGG's search endpoint answers alphabetically and offers no relevance signal at all. Ask it
+for "trio" and it hands back `3-Kaart Trio-Spel`, `Alce Trío Lío`, `Bio-Trio`, `Disney
+Triominos`, 71 candidates in all, with the game actually called Trio sitting at position 35.
+The typeahead shows eight rows. So the game was unreachable, and so was every other game whose
+name happens to be a common word.
+
+Ranking now happens in the Worker, in strict tiers: the whole name, then a leading whole word,
+then any whole word, then a substring. Names are compared in a normalized form that folds
+case, diacritics and punctuation, so `Trío` matches and a colon stops hiding `Ticket to Ride:
+Europe`. Tier beats popularity on purpose. If you typed a game's exact name you want that
+game, not the better-known expansion of something else.
+
+Tiers alone couldn't settle it. Ten of those 71 candidates are named exactly "Trio", so they
+all land in the same tier, and the order inside it was still BGG's alphabet. Inside a
+tier the most-rated game now wins, which is why the Worker spends one `thing` call hydrating
+the top twenty candidates (twenty being BGG's cap for a single call). That same call carries
+the cover art back, so the suggestion list stops asking people to choose between "Trio (2021)"
+and "Trio (2006)" on a year alone.
+
+That hydration is the one BGG call in the project that doesn't wait. Everywhere else, a busy
+or queued response is retried four times with 5s, 10s and 20s of backoff, because the metadata
+*is* the answer and 35 seconds of patience beats an empty game page. Search hydration passes
+`maxAttempts: 1` instead and gives up the moment BGG refuses. The covers are an enhancement
+the code is already written to throw away (D-32), someone is typing while this runs, and 35
+seconds stacked on a retried search call could have pushed `/api/search` to something like 70,
+close enough to Cloudflare's client timeout to matter. I read this as a refinement of D-32
+rather than an exception to it, since degrading after 35 seconds isn't degrading gracefully.
+The covers vanish instantly instead.
+
+The covers in those rows are marked decorative, `alt=""` and `aria-hidden`. The game's name
+sits right beside the image as text, so without that a screen reader announces "Trio Trio
+2021" on every one of the eight rows. `gameCover` grew a `decorative` option for it, used by
+the full search page too. The dropdown also got a height cap, because eight rows are taller
+now that each carries a 28px cover, and the sheet's body is what scrolls (D-35). The submit
+button was never at risk (it lives in the sheet's footer, outside the body), but without the
+cap the rest of the log-a-play form gets buried below the fold of the body scroller.
+
+Cost accepted: a cache-key bump. Game metadata is cached with no expiry, so every entry
+already in KV would have ranked with an undefined popularity forever. Moving to `bgg:v2:`
+(and `search:v2:`) re-fetches each game from BGG once, lazily, as it's next viewed. That's
+real upstream traffic, though spread thin enough never to stampede, and it strands the old
+entries in KV with no TTL to clear them. I'll take that over a fix that misses exactly the
+games people look at most.
