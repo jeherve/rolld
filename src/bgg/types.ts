@@ -42,4 +42,9 @@ export interface SearchCandidate {
   id: string;
   name: string;
   yearPublished?: number;
+  /** Cover art, merged in by the Worker for the top candidates (D-63). Absent when
+   *  the game has no art, or when hydration failed and search degraded (D-32). */
+  thumbnail?: string;
+  /** Popularity, merged in alongside `thumbnail`; ranks same-named games (D-63). */
+  usersRated?: number;
 }

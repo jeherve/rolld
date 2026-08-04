@@ -13,6 +13,7 @@
  * code, KV holds the tiny state" shape.
  */
 import { parseSearch, parseThing, parseThings } from '../../src/bgg/parse.js';
+import { rankCandidates, rankHydrated } from '../../src/bgg/rankSearch.js';
 import type { GameMetadata, SearchCandidate } from '../../src/bgg/types.js';
 import { BggError, fetchSearchXml, fetchThingXml } from './bgg.js';
 import { buildUserFeedXml } from './feed.js';
@@ -34,7 +35,7 @@ export interface KvStore {
 export interface Env {
   /** BGG bearer token — a Worker secret, read server-side only (D-31). */
   BGG_TOKEN: string;
-  /** KV cache: `bgg:<id>` (permanent metadata) + `search:<q>` (short-TTL queries). */
+  /** KV cache: `bgg:v2:<id>` (permanent metadata) + `search:v2:<q>` (short-TTL queries). */
   BGG_CACHE: KvStore;
 }
 
@@ -44,12 +45,18 @@ const RSS_TTL_SECONDS = 10 * 60; // readers poll; regenerate the feed at most ev
 const CX_TTL_SECONDS = 60; // play counts change, unlike BGG data — short Constellation cache.
 const MAX_BATCH = 20; // BGG caps a `thing` call at 20 ids (D-31).
 const MAX_IDS = 100; // Per-request hydrate cap — bounds Worker/BGG work, blocks DoS amplification (Sec#2).
+/** BGG caps a `thing` call at 20 ids, so hydrating exactly 20 costs one request (D-31). */
+const SEARCH_HYDRATE = 20;
 
 const CONSTELLATION_BASE = 'https://constellation.microcosm.blue';
 const SLINGSHOT_BASE = 'https://slingshot.microcosm.blue';
 
-const gameKey = (id: string): string => `bgg:${id}`;
-const searchKey = (q: string): string => `search:${q.trim().toLowerCase()}`;
+// `v2` (D-63): entries now carry `usersRated`, and search responses carry covers.
+// Metadata is cached with no TTL, so without a new prefix every already-cached game
+// would rank with an undefined popularity forever — reproducing the bug precisely
+// for the games people look at most.
+const gameKey = (id: string): string => `bgg:v2:${id}`;
+const searchKey = (q: string): string => `search:v2:${q.trim().toLowerCase()}`;
 
 async function readGameCache(env: Env, id: string): Promise<GameMetadata | null> {
   return await env.BGG_CACHE.get<GameMetadata>(gameKey(id), 'json');
@@ -96,15 +103,40 @@ async function resolveMany(env: Env, ids: string[]): Promise<GameMetadata[]> {
   return unique.map((id) => found.get(id)).filter((m): m is GameMetadata => m !== undefined);
 }
 
+/**
+ * Search, ranked and covered (D-63). BGG returns matches alphabetically, so the raw
+ * list is useless in a typeahead; rank first, then spend one `thing` call hydrating
+ * the top 20 so the covers and the popularity tie-break arrive together. Candidates
+ * past the top 20 are kept, unhydrated, for the full `/search` page.
+ */
 async function search(env: Env, q: string): Promise<SearchCandidate[]> {
   const cached = await env.BGG_CACHE.get<SearchCandidate[]>(searchKey(q), 'json');
   if (cached) return cached;
-  const xml = await fetchSearchXml(q, env.BGG_TOKEN);
-  const candidates = parseSearch(xml);
-  await env.BGG_CACHE.put(searchKey(q), JSON.stringify(candidates), {
+
+  const ranked = rankCandidates(q, parseSearch(await fetchSearchXml(q, env.BGG_TOKEN)));
+  const top = ranked.slice(0, SEARCH_HYDRATE);
+  let hydrated = top;
+  try {
+    const byId = new Map((await resolveMany(env, top.map((c) => c.id))).map((m) => [m.id, m]));
+    hydrated = top.map((c) => {
+      const meta = byId.get(c.id);
+      if (!meta) return c;
+      return {
+        ...c,
+        ...(meta.thumbnail ? { thumbnail: meta.thumbnail } : {}),
+        ...(meta.usersRated !== undefined ? { usersRated: meta.usersRated } : {}),
+      };
+    });
+  } catch {
+    // D-32: covers are an enhancement. A BGG failure here costs the art and the
+    // popularity tie-break, not the search itself.
+  }
+
+  const out = [...rankHydrated(q, hydrated), ...ranked.slice(SEARCH_HYDRATE)];
+  await env.BGG_CACHE.put(searchKey(q), JSON.stringify(out), {
     expirationTtl: SEARCH_TTL_SECONDS,
   });
-  return candidates;
+  return out;
 }
 
 function mapBggError(request: Request, err: unknown): Response {

@@ -96,18 +96,52 @@ describe('worker routes', () => {
     expect((await r.json()).error).toBe('GameNotFound');
   });
 
-  it('serves /api/search and short-TTL caches the query', async () => {
+  it('serves /api/search ranked, covered, and short-TTL cached', async () => {
     const SEARCH = readFileSync(resolve(process.cwd(), 'tests/fixtures/bgg-search-catan.xml'), 'utf8');
     const kv = fakeKv();
-    const fetchImpl = vi.fn(async () => xml(SEARCH));
+    // Two upstream calls now: the search, then one `thing` hydrate for the top 20.
+    const fetchImpl = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes('/search?') ? xml(SEARCH) : xml(THING),
+    );
     vi.stubGlobal('fetch', fetchImpl);
 
     const r = await worker.fetch(req('/api/search?q=catan'), env(kv));
     const body = await r.json();
-    expect(body[0]).toEqual({ id: '13', name: 'CATAN', yearPublished: 1995 });
+    expect(body[0].id).toBe('13');
+    expect(body[0].name).toBe('CATAN');
+    expect(body[0].yearPublished).toBe(1995);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
 
     await worker.fetch(req('/api/search?q=catan'), env(kv));
-    expect(fetchImpl).toHaveBeenCalledTimes(1); // cached
+    expect(fetchImpl).toHaveBeenCalledTimes(2); // second query served from KV
+  });
+
+  it('merges the cover onto a hydrated candidate', async () => {
+    const SEARCH = '<items><item id="174430"><name type="primary" value="Gloomhaven"/><yearpublished value="2017"/></item></items>';
+    const fetchImpl = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes('/search?') ? xml(SEARCH) : xml(THING),
+    );
+    vi.stubGlobal('fetch', fetchImpl);
+
+    const r = await worker.fetch(req('/api/search?q=gloomhaven'), env(fakeKv()));
+    const body = await r.json();
+    expect(body[0].thumbnail).toContain('thumb');
+    expect(body[0].usersRated).toBe(55432);
+  });
+
+  // D-32: hydration is an enhancement. Losing it must cost covers, not search.
+  it('still returns ranked candidates when hydration fails', async () => {
+    const SEARCH = '<items><item id="174430"><name type="primary" value="Gloomhaven"/><yearpublished value="2017"/></item></items>';
+    const fetchImpl = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes('/search?') ? xml(SEARCH) : xml('Unauthorized', 401),
+    );
+    vi.stubGlobal('fetch', fetchImpl);
+
+    const r = await worker.fetch(req('/api/search?q=gloomhaven'), env(fakeKv()));
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body[0].name).toBe('Gloomhaven');
+    expect(body[0].thumbnail).toBeUndefined();
   });
 
   it('returns [] for a too-short search without calling BGG', async () => {
