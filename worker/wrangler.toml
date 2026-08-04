@@ -17,7 +17,7 @@ routes = [
   { pattern = "rolld.at/api/*", zone_name = "rolld.at" },
 ]
 
-# KV cache: `bgg:<id>` (permanent game metadata) + `search:<q>` (short-TTL queries).
+# KV cache: `bgg:v2:<id>` (permanent game metadata) + `search:v2:<q>` (short-TTL queries).
 # Also holds `cx:<target>` (Constellation) + the moderation blocklist.
 # Create the namespace, then paste its id below:
 #   wrangler kv namespace create BGG_CACHE
