@@ -22,9 +22,11 @@ export const COLLECTION = {
 /** The single profile/declaration record is keyed `self`. */
 export const PROFILE_RKEY = 'self';
 
-/** Family signature links (footer). The pixel face → the author; Tangled → the repo (D-29). */
+/** Family signature link (footer): the pixel face → the author (D-29). */
 export const AUTHOR_PROFILE_URL = 'https://jeremy.herve.bzh';
-export const REPO_URL = 'https://tangled.org/jeremy.herve.bzh/rolld';
+
+/** The source repository — named as the contact in USER_AGENT, not linked from the UI (D-64). */
+export const REPO_URL = 'https://github.com/jeherve/rolld';
 
 /** BoardGameGeek home — where the footer's required "Powered by BGG" logo links (D-31, D-53). */
 export const BGG_URL = 'https://boardgamegeek.com';

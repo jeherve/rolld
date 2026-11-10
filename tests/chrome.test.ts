@@ -48,21 +48,20 @@ describe('renderAccountMenu', () => {
 });
 
 describe('renderFooter', () => {
-  it('links to the author profile and the repo on Tangled', () => {
+  it('links to the author profile but not to the source repo (D-64)', () => {
     const root = mount(renderFooter());
     const hrefs = [...root.querySelectorAll('a')].map((a) => a.getAttribute('href'));
     expect(hrefs).toContain(AUTHOR_PROFILE_URL);
-    expect(hrefs).toContain(REPO_URL);
+    expect(hrefs).not.toContain(REPO_URL);
   });
 
   it('keeps the About link', () => {
     expect(mount(renderFooter()).querySelector('a[href="/about"]')).not.toBeNull();
   });
 
-  it('renders the pixel face as an image and the Tangled mark inline as svg', () => {
+  it('renders the pixel face as an image', () => {
     const root = mount(renderFooter());
     expect(root.querySelector('img.avatar')?.getAttribute('src')).toBe('/jeremy-herve.svg');
-    expect(root.querySelector(`a[href="${REPO_URL}"] svg`)).not.toBeNull();
   });
 
   it('carries the "Powered by BGG" logo linked back to BoardGameGeek (D-31, D-53)', () => {

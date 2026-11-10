@@ -251,12 +251,6 @@ footer.status .iconlink {
 footer.status .iconlink:hover {
   opacity: 1;
 }
-footer.status .iconlink svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-  fill: currentColor;
-}
 footer.status .avatar {
   width: 20px;
   height: 20px;
@@ -264,7 +258,7 @@ footer.status .avatar {
 }
 /* "Powered by BGG" logo (D-53): full opacity and unmodified colours — BGG's licence
    forbids recolouring or fading it, and asks that the text stay easily legible, so it
-   opts out of the .iconlink fade and renders larger than the sibling glyphs. */
+   opts out of the .iconlink fade and renders larger than the author's face. */
 footer.status .bgg-credit {
   opacity: 1;
 }

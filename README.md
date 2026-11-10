@@ -122,9 +122,8 @@ own authority. To run rolld as-is, you don't have to.
 
 ### Deploying to Cloudflare Pages
 
-rolld's own git remote is on [tangled.org](https://tangled.org), so Cloudflare's
-git-connected builds aren't wired up. The deploy builds locally and pushes `dist/` with
-Wrangler direct upload:
+rolld's source is on GitHub, but Cloudflare's git-connected builds aren't wired up. The
+deploy builds locally and pushes `dist/` with Wrangler direct upload:
 
 ```sh
 npm run deploy       # build + wrangler pages deploy --branch=trunk

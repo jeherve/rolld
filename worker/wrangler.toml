@@ -1,6 +1,6 @@
 # rolld Worker — the BGG gateway + cache (D-3, D-31). The only server-side
-# component in rolld. Deployed separately from the Pages SPA (the git remote is on
-# Tangled, so Cloudflare git-builds aren't available; deploy is `wrangler deploy`).
+# component in rolld. Deployed separately from the Pages SPA, with `wrangler deploy`
+# (Cloudflare git-builds aren't wired up).
 
 name = "rolld-worker"
 main = "src/index.ts"

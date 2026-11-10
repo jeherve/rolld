@@ -486,8 +486,9 @@ existing atproto profile data plus rolld records.
 
 ### D-29 — Footer ports the family signature; About is the public philosophy page.
 The footer reuses the existing footer from the author's other projects (atmot, skypress) —
-the same two SVGs verbatim (the author's pixel face → the author; the Tangled mark → the
-rolld repo) — plus an About link. Those SVGs are family assets and are NOT restyled into
+~~the same two SVGs verbatim (the author's pixel face → the author; the Tangled mark → the
+rolld repo)~~ **the author's pixel face SVG verbatim, linked to the author (the repo link was
+dropped, see D-64)** — plus an About link. Those SVGs are family assets and are NOT restyled into
 rolld's rose theme. `/about` is a static page explaining rolld's inner workings and philosophy
 — the public, general-audience counterpart to this DECISIONS file (drawn from its substance,
 rewritten for visitors). Why: the footer is the cross-project "made by / hosted on"
@@ -715,6 +716,9 @@ Bluesky stays the fallback rather than being dropped. The maintainer's own profi
 its real `bsky.app` link (it's a person, not a generic AppView destination).
 
 ### D-52 — Footer marks: inline the single-colour glyph for tinting, serve the full-colour face as a static file.
+*Partly superseded by D-64: the Tangled mark is no longer in the footer, so only the face half
+applies today. The reasoning for inlining a single-colour mark still holds if one comes back.*
+
 The footer (D-29) carries two of the family marks, and they're handled two different ways on
 purpose — not an inconsistency to "reconcile". The Tangled mark is a one-colour glyph that
 should tint with the footer chrome, so it's inlined as a `SafeHtml` constant in `src/ui/icons.ts`
@@ -1080,3 +1084,18 @@ already in KV would have ranked with an undefined popularity forever. Moving to 
 real upstream traffic, though spread thin enough never to stampede, and it strands the old
 entries in KV with no TTL to clear them. I'll take that over a fix that misses exactly the
 games people look at most.
+
+### D-64 — The footer no longer links to the source repo
+
+rolld's code moved from Tangled to GitHub in November 2026. Until then the footer carried the
+Tangled mark, linked to the repo, as one half of the family signature from D-29. The obvious
+fix was to swap in a GitHub logo, but I didn't want to advertise GitHub in the footer either,
+so the link is gone. The footer now has the About link, the BGG credit (D-53) and my pixel face.
+
+`REPO_URL` stays in `src/config.ts`, pointing at GitHub. The User-Agent rolld sends to the
+microcosm services names it as a contact, and they ask for one. It's just not linked from the
+UI any more.
+
+Cost accepted: rolld's footer no longer matches atmot and skypress, which still show the
+Tangled mark. And nothing in the app points to the source now; the About page explains how
+rolld works, but anyone who wants to read the code has to go looking for it.

@@ -1,21 +1,15 @@
-import { AUTHOR_PROFILE_URL, BGG_URL, REPO_URL } from '../config.js';
+import { AUTHOR_PROFILE_URL, BGG_URL } from '../config.js';
 import { html, type SafeHtml } from './html.js';
-import { tangledMark } from './icons.js';
 
 /**
- * Shared footer — the family "made by / hosted on" signature (D-29). Three marks:
- * an About link into rolld's own story, the author's pixel face (→ the author),
- * and the Tangled mark (→ this repo). The face and Tangled mark are family assets,
- * copied verbatim and never restyled into the rose theme.
- *
- * The two marks are loaded differently on purpose (D-52). The Tangled mark is a
- * single-colour glyph inlined from `icons.ts` so it can pick up `currentColor` and tint
- * with the footer chrome — an <img> can't do that. The face is a full-colour pixel
- * portrait that must NOT be tinted and is a heavy asset, so it's served as a static
+ * Shared footer — the family "made by" signature (D-29, D-64): an About link into
+ * rolld's own story and the author's pixel face (→ the author). The face is a family
+ * asset, copied verbatim and never restyled into the rose theme. It's a full-colour
+ * pixel portrait that must NOT be tinted and is a heavy asset, so it's served as a static
  * `/jeremy-herve.svg` (kept out of the JS bundle, cached on its own) and lazy-loaded,
- * since the footer sits below the fold.
+ * since the footer sits below the fold (D-52).
  *
- * The BGG mark is a third <img> here, and for the same reasons as the face (D-52): it's a
+ * The BGG mark is a second <img> here, and for the same reasons as the face (D-52): it's a
  * full-colour asset that must keep its own colours (no `currentColor` tint) and is served
  * static from `/powered-by-bgg.svg`. It also earns its place — BGG's licence requires the
  * credit, linked back to BoardGameGeek, on every page that shows their data (D-31, D-53).
@@ -64,16 +58,6 @@ export function renderFooter(): SafeHtml {
           loading="lazy"
           decoding="async"
         />
-      </a>
-      <a
-        class="iconlink"
-        href="${REPO_URL}"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="rolld source on tangled.org"
-        aria-label="The rolld source repository on tangled.org"
-      >
-        ${tangledMark}
       </a>
     </footer>
   `;
